@@ -40,8 +40,8 @@ tools/host-runner/call.sh db-verify
 Строка подключения к поднятой базе:
 
 ```text
-из контейнера агента   postgresql://garden:garden@postgres:5432/garden
-с хоста                postgresql://garden:garden@localhost:5432/garden
+из контейнера агента   postgresql://forge:forge@postgres:5432/forge
+с хоста                postgresql://forge:forge@localhost:5432/forge
 ```
 
 > **Внимание:** `db-down` и `db-verify` удаляют том базы. Это их назначение — сборка схемы

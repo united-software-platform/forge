@@ -12,11 +12,11 @@ from typing import Any
 
 import pytest
 import yaml
-from garden_model.checks import checks_for, run_checks
-from garden_model.cli import main
-from garden_model.descriptor import compile_model
-from garden_model.model import load_model
-from garden_model.verify import verify_schema
+from forge_model.checks import checks_for, run_checks
+from forge_model.cli import main
+from forge_model.descriptor import compile_model
+from forge_model.model import load_model
+from forge_model.verify import verify_schema
 
 from tests.conftest import statements_of
 

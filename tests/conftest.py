@@ -9,8 +9,8 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 @pytest.fixture
 def model_root() -> Path:
-    """Каталог образцовой модели `garden.reqs.v1`."""
-    return FIXTURES / "model" / "garden.reqs.v1"
+    """Каталог образцовой модели `forge.reqs.v1`."""
+    return FIXTURES / "model" / "forge.reqs.v1"
 
 
 @pytest.fixture
@@ -18,7 +18,7 @@ def model_copy(model_root: Path, tmp_path: Path) -> Path:
     """Копия образцовой модели, которую тест может править."""
     import shutil
 
-    target = tmp_path / "garden.reqs.v1"
+    target = tmp_path / "forge.reqs.v1"
     shutil.copytree(model_root, target)
     return target
 

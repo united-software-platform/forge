@@ -2,14 +2,14 @@
 
 import pytest
 import yaml
-from garden_model.errors import ModelError
-from garden_model.model import Version, load_model
+from forge_model.errors import ModelError
+from forge_model.model import Version, load_model
 
 
 def test_тип_узла_разбирается_со_всеми_элементами_формата(model_root):
     model = load_model(model_root)
 
-    assert model.package == "garden.reqs"
+    assert model.package == "forge.reqs"
     assert model.version == Version(1, 2, 0)
 
     br = model.type_by_code("BR")

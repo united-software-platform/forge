@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 import yaml
-from garden_model.descriptor import compile_model
-from garden_model.gen import postgres
-from garden_model.gen.changelog import emit, emit_baseline
-from garden_model.model import load_model
-from garden_model.release import plan_release
+from forge_model.descriptor import compile_model
+from forge_model.gen import postgres
+from forge_model.gen.changelog import emit, emit_baseline
+from forge_model.model import load_model
+from forge_model.release import plan_release
 
 pgserver = pytest.importorskip("pgserver")
 

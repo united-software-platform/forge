@@ -1,4 +1,4 @@
-"""Точка входа: `python -m garden_model`."""
+"""Точка входа: `python -m forge_model`."""
 
 import sys
 

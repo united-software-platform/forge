@@ -40,9 +40,9 @@ services:
     image: ${DB_IMAGE:-postgres:17-alpine}
     profiles: ["db"]
     environment:
-      POSTGRES_DB: ${DB_NAME:-garden}
-      POSTGRES_USER: ${DB_USER:-garden}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-garden}
+      POSTGRES_DB: ${DB_NAME:-forge}
+      POSTGRES_USER: ${DB_USER:-forge}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-forge}
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:
@@ -50,7 +50,7 @@ services:
     # Готовность проверяется явно: Liquibase стартует сразу после up и без ожидания
     # упёрся бы в ещё не принимающий соединения сервер
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-garden} -d ${DB_NAME:-garden}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-forge} -d ${DB_NAME:-forge}"]
       interval: 2s
       timeout: 3s
       retries: 30
@@ -69,9 +69,9 @@ services:
       - ./changelog:/liquibase/changelog:ro
     command:
       - --changelog-file=changelog/master.yaml
-      - --url=jdbc:postgresql://postgres:5432/${DB_NAME:-garden}
-      - --username=${DB_USER:-garden}
-      - --password=${DB_PASSWORD:-garden}
+      - --url=jdbc:postgresql://postgres:5432/${DB_NAME:-forge}
+      - --username=${DB_USER:-forge}
+      - --password=${DB_PASSWORD:-forge}
       - update
 
 volumes:

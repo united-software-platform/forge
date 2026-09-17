@@ -17,7 +17,7 @@ from .model import load_model
 from .release import find_previous, plan_release, record_taken
 from .verify import verify_schema
 
-DEFAULT_MODEL = Path("model/garden.reqs.v1")
+DEFAULT_MODEL = Path("model/forge.reqs.v1")
 DEFAULT_RELEASES = Path("model/releases")
 DEFAULT_CHANGELOG = Path("changelog")
 
@@ -37,7 +37,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="garden-model", description="Контракт модели данных графа требований"
+        prog="forge-model", description="Контракт модели данных графа требований"
     )
     sub = parser.add_subparsers(required=True)
 

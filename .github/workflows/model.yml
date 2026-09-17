@@ -24,8 +24,8 @@ jobs:
 
       - name: Гейт выпуска — ошибки процесса блокируют слияние
         run: |
-          if [ -d model/garden.reqs.v1 ]; then
-            PYTHONPATH=tools uv run --quiet python -m garden_model diff
+          if [ -d model/forge.reqs.v1 ]; then
+            PYTHONPATH=tools uv run --quiet python -m forge_model diff
           else
             echo "Модель ещё не заполнена — гейт пропущен"
           fi

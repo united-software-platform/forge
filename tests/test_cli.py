@@ -4,14 +4,14 @@ import shutil
 
 import pytest
 import yaml
-from garden_model import registry
-from garden_model.cli import main
+from forge_model import registry
+from forge_model.cli import main
 
 
 @pytest.fixture
 def workspace(model_root, tmp_path):
     """Рабочая копия проекта: модель, каталог выпусков, каталог миграций."""
-    model = tmp_path / "model" / "garden.reqs.v1"
+    model = tmp_path / "model" / "forge.reqs.v1"
     shutil.copytree(model_root, model)
     return {
         "root": tmp_path,
@@ -51,7 +51,7 @@ def _bump(workspace, version, mutate=None):
 def test_сборка_печатает_версию_и_хеш(workspace, capsys):
     assert _run(workspace, "build") == 0
     out = capsys.readouterr().out
-    assert "garden.reqs 1.2.0" in out and "sha256:" in out
+    assert "forge.reqs 1.2.0" in out and "sha256:" in out
 
 
 def test_начальный_выпуск_создаёт_свёртку_и_дескриптор(workspace):

@@ -2,9 +2,9 @@
 
 import pytest
 import yaml
-from garden_model.descriptor import compile_model, dump_descriptor
-from garden_model.errors import ModelError
-from garden_model.model import load_model
+from forge_model.descriptor import compile_model, dump_descriptor
+from forge_model.errors import ModelError
+from forge_model.model import load_model
 
 
 def _compile(root):
@@ -14,7 +14,7 @@ def _compile(root):
 def test_дескриптор_самодостаточен(model_root):
     d = _compile(model_root)
 
-    assert d["model"] == "garden.reqs"
+    assert d["model"] == "forge.reqs"
     assert d["version"] == "1.2.0"
     assert (d["major"], d["minor"], d["patch"]) == (1, 2, 0)
 

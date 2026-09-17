@@ -89,7 +89,7 @@ wheels = [
 ]
 
 [[package]]
-name = "garden-model"
+name = "forge-model"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

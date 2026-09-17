@@ -4,11 +4,11 @@ import json
 
 import pytest
 import yaml
-from garden_model.descriptor import compile_model
-from garden_model.diff import BREAKING, DESTRUCTIVE, SAFE, diff_descriptors
-from garden_model.errors import ModelError
-from garden_model.model import load_model
-from garden_model.release import GateError, find_previous, plan_release, record_taken
+from forge_model.descriptor import compile_model
+from forge_model.diff import BREAKING, DESTRUCTIVE, SAFE, diff_descriptors
+from forge_model.errors import ModelError
+from forge_model.model import load_model
+from forge_model.release import GateError, find_previous, plan_release, record_taken
 
 
 def _compile(root):

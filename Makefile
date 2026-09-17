@@ -145,7 +145,7 @@ openspec-init: ## Развернуть инструменты SDD: openspec init
 
 # Запуск инструментов модели. Пакет лежит в tools/, поэтому путь добавляется явно:
 # устанавливать проект в окружение ради вызова из Makefile не требуется.
-model_run = PYTHONPATH=tools uv run --quiet python -m garden_model
+model_run = PYTHONPATH=tools uv run --quiet python -m forge_model
 
 # Сборка дескриптора рабочей модели: печатает версию и хеш содержания.
 # Ошибки формата и валидации модели останавливают цель ненулевым кодом возврата.

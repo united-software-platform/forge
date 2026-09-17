@@ -40,7 +40,7 @@ model/
 ## Манифест
 
 ```yaml
-model: garden.reqs
+model: forge.reqs
 version: 1.2.0
 
 enums:
