@@ -13,6 +13,9 @@ from .checks import checks_for, run_checks
 from .descriptor import compile_model, dump_descriptor
 from .errors import ModelError
 from .gen.changelog import emit, emit_baseline
+from .intent.engine import DEFAULT_MAX_ITERATIONS, run_cycle
+from .intent.mock import steps_for
+from .intent.scenario import load_scenario
 from .model import load_model
 from .release import find_previous, plan_release, record_taken
 from .verify import verify_schema
@@ -20,6 +23,11 @@ from .verify import verify_schema
 DEFAULT_MODEL = Path("model/forge.reqs.v1")
 DEFAULT_RELEASES = Path("model/releases")
 DEFAULT_CHANGELOG = Path("changelog")
+DEFAULT_RUNS = Path("model/intents/runs")
+
+#: Код возврата прогона цикла: цикл не замкнут. От ошибки процесса он отличается,
+#: чтобы вызывающий пайплайн не принимал останов за сломанное окружение.
+CYCLE_OPEN = 2
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -61,7 +69,25 @@ def _parser() -> argparse.ArgumentParser:
     verify.add_argument("--changelog", type=Path, default=DEFAULT_CHANGELOG)
     verify.add_argument("--dsn", required=True, help="строка подключения к хранилищу")
     verify.set_defaults(handler=_verify)
+
+    _intent_parser(sub)
     return parser
+
+
+def _intent_parser(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    intent = sub.add_parser("intent", help="цикл намерения")
+    actions = intent.add_subparsers(required=True)
+
+    run = actions.add_parser("run", help="прогнать цикл намерения по сценарию")
+    run.add_argument("--scenario", type=Path, required=True, help="файл сценария прогона")
+    run.add_argument("--runs", type=Path, default=DEFAULT_RUNS, help="каталог отчётов прогонов")
+    run.add_argument(
+        "--max-iterations",
+        type=int,
+        default=DEFAULT_MAX_ITERATIONS,
+        help=f"лимит итераций (по умолчанию {DEFAULT_MAX_ITERATIONS})",
+    )
+    run.set_defaults(handler=_intent_run)
 
 
 def _descriptor(args: argparse.Namespace) -> dict[str, Any]:
@@ -113,6 +139,21 @@ def _checks(args: argparse.Namespace) -> int:
     for check in checks_for(_descriptor(args)):
         print(f"-- {check.name}: {check.subject}\n{check.sql}\n")
     return 0
+
+
+def _intent_run(args: argparse.Namespace) -> int:
+    scenario = load_scenario(args.scenario)
+    outcome = run_cycle(
+        scenario,
+        steps_for(scenario),
+        runs_dir=args.runs,
+        max_iterations=args.max_iterations,
+    )
+    print(f"{outcome.code}  {outcome.state.title}: {outcome.reason}")
+    print(f"итераций засчитано: {outcome.iterations}")
+    for path in outcome.reports:
+        print(f"отчёт: {path}")
+    return 0 if outcome.closed else CYCLE_OPEN
 
 
 def _verify(args: argparse.Namespace) -> int:
