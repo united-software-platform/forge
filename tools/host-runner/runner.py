@@ -29,20 +29,7 @@ from urllib.parse import urlsplit
 #
 # Цели сборки образа здесь нет и быть не может: образ собирает пайплайн репозитория kit'а,
 # а проект получает его из реестра — в Makefile такой цели нет.
-ALLOWED_TARGETS = frozenset(
-    {
-        "init",
-        "openspec-init",
-        "help",
-        # Цели работы с базой модели: у агента нет docker, поэтому поднять хранилище
-        # и применить миграции он может только через раннер. Цели model-* в список
-        # не входят — они выполняются в контейнере агента и хост им не нужен.
-        "db-up",
-        "db-down",
-        "db-apply",
-        "db-verify",
-    }
-)
+ALLOWED_TARGETS = frozenset({"init", "openspec-init", "help"})
 
 # Цели выполняются в корне репозитория: там лежит Makefile окружения
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -60,13 +47,11 @@ class RunnerHandler(BaseHTTPRequestHandler):
 
     server_version = "host-runner/1.4"
 
-    # Имя метода задано BaseHTTPRequestHandler и переименованию не подлежит.
-    def do_GET(self) -> None:
+    def do_GET(self) -> None:  # noqa: N802 — имя задано BaseHTTPRequestHandler
         # Ответ обязателен при любом исходе: без него клиент виснет до своего таймаута
         try:
             self._dispatch()
-        # Перехват любого исключения намеренный: раннер не должен падать молча.
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 — раннер не должен падать молча
             self._reply(500, f"Внутренняя ошибка раннера: {error!r}\n")
 
     def _dispatch(self) -> None:
