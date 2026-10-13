@@ -1,0 +1,2 @@
+выпущено: changelog/core/Version20260915142233.sql
+выпущено: changelog/core/Version20260915142234.sql

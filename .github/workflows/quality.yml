@@ -32,3 +32,13 @@ jobs:
       - name: Проверка типов
         if: ${{ !cancelled() }}
         run: uv run --quiet --extra dev mypy
+
+      # Спецификации и изменения OpenSpec проходят строгую проверку: предупреждение — отказ.
+      # Версия закреплена точно по той же причине, что и версии ruff и mypy: вердикт
+      # на неизменных спецификациях не должен меняться вместе с выходом новой версии.
+      # Локально проверка запускается той же командой: openspec validate --all --strict.
+      - name: Спецификации — строгая проверка OpenSpec
+        if: ${{ !cancelled() }}
+        env:
+          OPENSPEC_TELEMETRY: "0"
+        run: npx --yes @fission-ai/openspec@1.14.1 validate --all --strict

@@ -1,0 +1,12 @@
+# Образец минимальной модели forge: один тип узла и одно перечисление.
+# Раскладка — MDL-001 (forge norms --rule MDL-001), манифест — MDL-004 (forge norms --rule MDL-004).
+model: forge.reqs
+version: 1.0.0
+
+enums:
+  # Значение перечисления — MDL-005 (forge norms --rule MDL-005).
+  req_status:
+    id: 1
+    values:
+      - { id: 1, name: DRAFT }
+      - { id: 2, name: APPROVED }

@@ -1,9 +1,11 @@
 [project]
 name = "forge-model"
-version = "0.1.0"
+version = "0.2.0"
 description = "Компилятор модели, гейт совместимости и генератор миграций графа требований Forge"
 requires-python = ">=3.12"
-dependencies = ["pyyaml>=6.0", "psycopg[binary]>=3.1"]
+# Пины совпадают с plugin/forge/src/requirements.txt — файлом зависимостей поставки плагина.
+# Сверку выполняет тест поставки: окружение разработки и окружение входа forge одни и те же.
+dependencies = ["pyyaml==6.0.3", "psycopg[binary]==3.3.5"]
 
 [project.optional-dependencies]
 # pgserver нужен только тестам: он поднимает временный PostgreSQL,
@@ -29,13 +31,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["tools/forge_model"]
+packages = ["plugin/forge/src/forge_model"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # Корень проекта в пути — чтобы помощники тестов импортировались как `tests.conftest`:
 # тем же именем, каким их видит проверка типов.
-pythonpath = ["tools", "."]
+pythonpath = ["plugin/forge/src", "."]
 
 # Ruff закрывает две роли сразу: `ruff format` задаёт оформление, `ruff check` ищет дефекты,
 # которые оформлением не исчерпываются. Конфигурация здесь единственная: пайплайн и локальный
@@ -58,18 +60,24 @@ select = ["E", "W", "F", "I", "N", "UP", "B", "C4", "SIM", "RET", "RUF"]
 # ревью, а не пометками в коде.
 ignore = ["RUF001", "RUF002", "RUF003"]
 
+[tool.ruff.lint.per-file-ignores]
+# Файл окружения SDD-kit записан в .sdd-kit-manifest.json с хешем: правка в нём разойдётся
+# с манифестом и затрётся переустановкой kit'а. Две пометки noqa в нём ruff считает
+# неиспользуемыми — замечание к kit'у; исключение снимается, когда kit их уберёт.
+"tools/host-runner/runner.py" = ["RUF100"]
+
 # Строгий режим целиком: отсутствующая аннотация, несовместимое присваивание и обращение
-# к неизвестному атрибуту — ошибки. Пакет лежит в tools/, поэтому корень импортов указан
-# явно — тот же, что у pytest в pythonpath.
+# к неизвестному атрибуту — ошибки. Пакет лежит под корнем плагина plugin/forge/src, поэтому
+# корень импортов указан явно — тот же, что у pytest в pythonpath.
 [tool.mypy]
 strict = true
 python_version = "3.12"
 # Второй корень — каталог раннера: имя `host-runner` содержит дефис и именем пакета быть
 # не может, поэтому его файл разрешается как модуль верхнего уровня.
-mypy_path = ["tools", "tools/host-runner"]
+mypy_path = ["plugin/forge/src", "tools/host-runner"]
 explicit_package_bases = true
 namespace_packages = true
-files = ["tools", "tests"]
+files = ["plugin/forge/src", "tools", "tests"]
 
 [[tool.mypy.overrides]]
 # Тестовые функции не аннотируются: фикстуры pytest подставляются по имени параметра,

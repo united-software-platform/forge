@@ -1,16 +1,28 @@
 """Сценарий прогона: чтение, умолчания, ошибки формата и поведение подставных шагов."""
 
+from pathlib import Path
+
 import pytest
-from forge_model.errors import ModelError
-from forge_model.intent.mock import steps_for
-from forge_model.intent.scenario import load_scenario
-from forge_model.intent.step import STAGES, Outcome, Stage, StepContext
+from forge_model.errors import EnvironmentFault
+from forge_model.intent.application.contracts import StepContext
+from forge_model.intent.domain import STAGES, Stage, StageOutcome
+from forge_model.intent.infrastructure import ScenarioSteps, YamlScenarioSource
 
 
 def write(tmp_path, body):
     path = tmp_path / "scenario.yaml"
     path.write_text(body, encoding="utf-8")
     return path
+
+
+def load_scenario(path):
+    reading = YamlScenarioSource().read(path)
+    assert reading.scenario is not None, reading.problems
+    return reading.scenario
+
+
+def steps_for(scenario):
+    return ScenarioSteps().steps(scenario)
 
 
 def test_full_scenario_is_read(tmp_path):
@@ -25,26 +37,26 @@ def test_full_scenario_is_read(tmp_path):
     )
     assert scenario.code == "INT-007"
     assert scenario.positions == ("поле FR.source_ref",)
-    assert scenario.outcome_for(Stage.RECONCILE, 1) is Outcome.REJECTED
-    assert scenario.outcome_for(Stage.RECONCILE, 2) is Outcome.PASSED
+    assert scenario.outcome_for(Stage.RECONCILE, 1) is StageOutcome.REJECTED
+    assert scenario.outcome_for(Stage.RECONCILE, 2) is StageOutcome.PASSED
 
 
 def test_unnamed_stage_is_passed(tmp_path):
     """Стадия, сценарием не названная, считается пройденной."""
     scenario = load_scenario(write(tmp_path, "intent: INT-001\n"))
-    assert all(scenario.outcome_for(stage, 1) is Outcome.PASSED for stage in STAGES)
+    assert all(scenario.outcome_for(stage, 1) is StageOutcome.PASSED for stage in STAGES)
 
 
 def test_short_list_repeats_last_outcome(tmp_path):
     """Список короче числа итераций повторяет последнее значение."""
     scenario = load_scenario(write(tmp_path, "intent: INT-001\nstages:\n  reconcile: [rejected]\n"))
-    assert scenario.outcome_for(Stage.RECONCILE, 9) is Outcome.REJECTED
+    assert scenario.outcome_for(Stage.RECONCILE, 9) is StageOutcome.REJECTED
 
 
 def test_single_value_needs_no_list(tmp_path):
     """Одиночный исход допустим без перечня."""
     scenario = load_scenario(write(tmp_path, "intent: INT-001\nstages:\n  validate: rejected\n"))
-    assert scenario.outcome_for(Stage.VALIDATE, 1) is Outcome.REJECTED
+    assert scenario.outcome_for(Stage.VALIDATE, 1) is StageOutcome.REJECTED
 
 
 @pytest.mark.parametrize(
@@ -62,14 +74,17 @@ def test_single_value_needs_no_list(tmp_path):
 )
 def test_broken_scenario_is_rejected(tmp_path, body, message):
     """Каждая ошибка формата отклоняет сценарий и называет причину."""
-    with pytest.raises(ModelError, match=message):
-        load_scenario(write(tmp_path, body))
+    reading = YamlScenarioSource().read(write(tmp_path, body))
+
+    assert reading.scenario is None
+    assert [message in problem.message for problem in reading.problems] == [True]
+    assert reading.problems[0].place.startswith("сценарий ")
 
 
 def test_missing_file_is_reported(tmp_path):
-    """Отсутствующий файл сценария — ошибка процесса, а не падение."""
-    with pytest.raises(ModelError, match="файл не найден"):
-        load_scenario(tmp_path / "нет.yaml")
+    """Отсутствующий файл сценария — ошибка окружения, а не падение."""
+    with pytest.raises(EnvironmentFault, match="файл не найден"):
+        YamlScenarioSource().read(tmp_path / "нет.yaml")
 
 
 def test_mock_steps_cover_every_stage(tmp_path):
@@ -90,7 +105,7 @@ def test_mock_step_touches_nothing(tmp_path, monkeypatch):
 
     context = StepContext(scenario.code, scenario.positions, 1)
     results = [steps_for(scenario)[stage](context) for stage in STAGES]
-    assert all(result.outcome is Outcome.PASSED for result in results)
+    assert all(result.outcome is StageOutcome.PASSED for result in results)
 
 
 def test_reconcile_step_carries_verdict_per_position(tmp_path):
@@ -108,8 +123,6 @@ def test_reconcile_step_carries_verdict_per_position(tmp_path):
 
 def test_demo_scenario_describes_reverse_edge():
     """Пример сценария в репозитории описывает расхождение и последующее совпадение."""
-    from pathlib import Path
-
     scenario = load_scenario(Path("model/intents/scenarios/demo.yaml"))
-    assert scenario.outcome_for(Stage.RECONCILE, 1) is Outcome.REJECTED
-    assert scenario.outcome_for(Stage.RECONCILE, 2) is Outcome.PASSED
+    assert scenario.outcome_for(Stage.RECONCILE, 1) is StageOutcome.REJECTED
+    assert scenario.outcome_for(Stage.RECONCILE, 2) is StageOutcome.PASSED

@@ -12,13 +12,9 @@ from typing import Any
 
 import pytest
 import yaml
-from forge_model.checks import checks_for, run_checks
 from forge_model.cli import main
-from forge_model.descriptor import compile_model
-from forge_model.model import load_model
-from forge_model.verify import verify_schema
 
-from tests.conftest import statements_of
+from tests.conftest import compiled, statements_of, store_drifts, store_violations
 
 pgserver = pytest.importorskip("pgserver")
 psycopg = pytest.importorskip("psycopg")
@@ -155,7 +151,7 @@ def applied(db, trade_copy, tmp_path):
     workspace = tmp_path / "workspace"
     _evolve(trade_copy, workspace)
     count = _apply_all(db, workspace / "changelog")
-    descriptor = compile_model(load_model(trade_copy))
+    descriptor = compiled(trade_copy)
     return db, descriptor, count
 
 
@@ -166,15 +162,15 @@ def test_вся_история_миграций_применяется(applied):
     # 1.2.0, 1.3.0, 1.4.0: по одному шагу и замыкающей.
     assert count == 11
     assert connection.execute("SELECT version, hash FROM model_state").fetchone() == (
-        descriptor["version"],
-        descriptor["hash"],
+        str(descriptor.version),
+        descriptor.hash,
     )
 
 
 def test_схема_после_наката_соответствует_модели(applied):
     connection, descriptor, _ = applied
 
-    assert verify_schema(descriptor, _fetch(connection)) == []
+    assert store_drifts(descriptor, _fetch(connection)) == []
 
 
 def test_эволюция_отражена_в_схеме(applied):
@@ -204,7 +200,7 @@ def test_согласованные_данные_проходят_проверк
     connection, descriptor, _ = applied
     _fill(connection)
 
-    assert run_checks(checks_for(descriptor), _fetch(connection)) == []
+    assert store_violations(descriptor, _fetch(connection)) == []
 
 
 def test_заказ_без_покупателя_попадает_в_отчёт(applied):
@@ -212,7 +208,7 @@ def test_заказ_без_покупателя_попадает_в_отчёт(a
     _fill(connection)
     _node(connection, "ORD", 2, "ord_revision", number="A-2", status="DRAFT", placed_at="now()")
 
-    violations = run_checks(checks_for(descriptor), _fetch(connection))
+    violations = store_violations(descriptor, _fetch(connection))
     assert [v.check for v in violations] == ["placed_by.from_cardinality.min"]
 
 
@@ -231,7 +227,7 @@ def test_два_покупателя_у_заказа_попадают_в_отч�
     )
     _link(connection, "placed_by", (ids["ord"], "ORD"), (another, "CUST"))
 
-    violations = run_checks(checks_for(descriptor), _fetch(connection))
+    violations = store_violations(descriptor, _fetch(connection))
     assert [v.check for v in violations] == ["placed_by.from_cardinality.max"]
 
 
@@ -244,7 +240,7 @@ def test_цикл_по_связи_замены_товара_обнаружива
     _link(connection, "replaces", (ids["prod"], "PROD"), (other, "PROD"))
     _link(connection, "replaces", (other, "PROD"), (ids["prod"], "PROD"))
 
-    violations = run_checks(checks_for(descriptor), _fetch(connection))
+    violations = store_violations(descriptor, _fetch(connection))
     assert "replaces.acyclic" in [v.check for v in violations]
 
 

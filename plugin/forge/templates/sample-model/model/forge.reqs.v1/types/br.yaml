@@ -1,0 +1,11 @@
+# Тип узла — MDL-006 (forge norms --rule MDL-006), поля — MDL-009 (forge norms --rule MDL-009).
+type: BR
+id: 1
+name:
+  ru: Бизнес-требование
+  en: Business Requirement
+
+fields:
+  - { id: 1, name: title, type: text, required: true }
+  - { id: 2, name: status, type: enum.req_status, required: true }
+  - { id: 3, name: origin, type: text }

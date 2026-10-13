@@ -1,22 +1,8 @@
 """Генерация миграций: раскладка, именование, порядок, замыкающая миграция, свёртка."""
 
-from datetime import UTC, datetime
-
 import yaml
-from forge_model.descriptor import compile_model
-from forge_model.gen.changelog import emit, emit_baseline
-from forge_model.model import load_model
-from forge_model.release import plan_release
 
-MOMENT = datetime(2026, 9, 15, 14, 22, 33, tzinfo=UTC)
-
-
-def _clock():
-    return MOMENT
-
-
-def _compile(root):
-    return compile_model(load_model(root))
+from tests.conftest import baseline, compiled, release
 
 
 def _edit(root, mutate, version, file="types/br.yaml"):
@@ -28,27 +14,29 @@ def _edit(root, mutate, version, file="types/br.yaml"):
     data = yaml.safe_load(manifest.read_text(encoding="utf-8"))
     data["version"] = version
     manifest.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
-    return _compile(root)
+    return compiled(root)
 
 
-def _emit(model_root, model_copy, mutate, version="1.3.0", file="types/br.yaml", out=None):
-    before = _compile(model_root)
-    after = _edit(model_copy, mutate, version, file)
-    plan = plan_release(after, before)
-    return plan, emit(plan, out, clock=_clock)
+def _emit(model_root, model_copy, mutate, out, version="1.3.0", file="types/br.yaml"):
+    before = compiled(model_root)
+    _edit(model_copy, mutate, version, file)
+    return before, release(model_copy, out, before)
+
+
+def _files(out, output):
+    return [out / address for address in output.released]
 
 
 def test_добавление_поля_кладётся_в_каталог_типа(model_root, model_copy, tmp_path):
     out = tmp_path / "changelog"
-    _, emitted = _emit(
+    _, output = _emit(
         model_root,
         model_copy,
         lambda raw: raw["fields"].append({"id": 6, "name": "owner", "type": "text"}),
-        out=out,
+        out,
     )
 
-    paths = emitted.paths(out)
-    assert "br/Version20260915142233.sql" in paths
+    assert "br/Version20260915142233.sql" in output.released
     body = (out / "br" / "Version20260915142233.sql").read_text(encoding="utf-8")
     assert "ALTER TABLE br_revision ADD COLUMN owner text;" in body
     assert "--rollback ALTER TABLE br_revision DROP COLUMN owner;" in body
@@ -61,7 +49,7 @@ def test_переименование_выпускает_rename(model_root, mode
         model_root,
         model_copy,
         lambda raw: raw["fields"].__setitem__(3, {"id": 4, "name": "provenance", "type": "text"}),
-        out=out,
+        out,
     )
     body = (out / "br" / "Version20260915142233.sql").read_text(encoding="utf-8")
     assert "RENAME COLUMN origin TO provenance;" in body
@@ -70,54 +58,47 @@ def test_переименование_выпускает_rename(model_root, mode
 
 def test_удаление_поля_выпускается_с_предупреждением(model_root, model_copy, tmp_path):
     out = tmp_path / "changelog"
-    plan, emitted = _emit(model_root, model_copy, lambda raw: raw["fields"].pop(3), out=out)
+    _, output = _emit(model_root, model_copy, lambda raw: raw["fields"].pop(3), out)
 
     body = (out / "br" / "Version20260915142233.sql").read_text(encoding="utf-8")
     assert "ALTER TABLE br_revision DROP COLUMN origin;" in body
-    assert emitted.warnings, "выпуск состоялся, но предупреждение выдано"
-    assert "данные колонки origin будут удалены" in plan.report()
+    assert any(line.startswith("ВНИМАНИЕ") for line in output.summary), "предупреждение выдано"
+    assert "данные колонки origin будут удалены" in "\n".join(output.summary)
 
 
 def test_замыкающая_миграция_несёт_хеш_и_предусловие(model_root, model_copy, tmp_path):
     out = tmp_path / "changelog"
-    plan, emitted = _emit(
+    before, output = _emit(
         model_root,
         model_copy,
         lambda raw: raw["fields"].append({"id": 6, "name": "owner", "type": "text"}),
-        out=out,
+        out,
     )
+    after = compiled(model_copy)
 
-    closing = emitted.files[-1].read_text(encoding="utf-8")
+    closing = _files(out, output)[-1].read_text(encoding="utf-8")
     assert "--preconditions onFail:HALT" in closing
-    assert plan.previous["hash"] in closing, "предусловие сверяет прежний хеш"
-    assert f"UPDATE model_state SET version = '1.3.0', hash = '{plan.current['hash']}';" in closing
+    assert before.hash in closing, "предусловие сверяет прежний хеш"
+    assert f"UPDATE model_state SET version = '1.3.0', hash = '{after.hash}';" in closing
 
 
 def test_версия_без_изменений_схемы_выпускает_замыкающую(model_root, model_copy, tmp_path):
     out = tmp_path / "changelog"
-    before = _compile(model_root)
 
     def mutate(raw):
         raw["fields"] = [f for f in raw["fields"] if f["id"] != 4]
         raw.setdefault("taken", {}).setdefault("fields", []).append(4)
 
-    after = _edit(model_copy, mutate, "1.3.0")
-    plan = plan_release(after, before)
-    emitted = emit(plan, out, clock=_clock)
+    _, output = _emit(model_root, model_copy, mutate, out)
 
-    assert len(emitted.files) == 2, "удаление колонки и замыкающая"
-    assert "схема не меняется" not in emitted.files[-1].read_text(encoding="utf-8")
+    assert len(output.released) == 2, "удаление колонки и замыкающая"
+    assert "схема не меняется" not in _files(out, output)[-1].read_text(encoding="utf-8")
 
 
 def test_порядок_в_master_топологический(model_root, model_copy, tmp_path):
     out = tmp_path / "changelog"
-
-    def mutate(raw):
-        raw["fields"].append({"id": 6, "name": "owner", "type": "text"})
-
-    before = _compile(model_root)
-    path = model_copy / "types" / "tc.yaml"
-    path.write_text(
+    before = compiled(model_root)
+    (model_copy / "types" / "tc.yaml").write_text(
         yaml.safe_dump(
             {
                 "type": "TC",
@@ -133,9 +114,13 @@ def test_порядок_в_master_топологический(model_root, model
     raw = yaml.safe_load(rel.read_text(encoding="utf-8"))
     raw["relations"].append({"id": 2, "name": "verified_by", "from": ["FR"], "to": ["TC"]})
     rel.write_text(yaml.safe_dump(raw, allow_unicode=True), encoding="utf-8")
-    after = _edit(model_copy, mutate, "1.3.0")
+    _edit(
+        model_copy,
+        lambda raw: raw["fields"].append({"id": 6, "name": "owner", "type": "text"}),
+        "1.3.0",
+    )
 
-    emit(plan_release(after, before), out, clock=_clock)
+    release(model_copy, out, before)
     order = [
         e["include"]["file"]
         for e in yaml.safe_load((out / "master.yaml").read_text(encoding="utf-8"))[
@@ -154,10 +139,10 @@ def test_порядок_в_master_топологический(model_root, model
 
 def test_свёртка_модели_создаёт_всю_схему(model_root, tmp_path):
     out = tmp_path / "changelog"
-    descriptor = _compile(model_root)
-    emitted = emit_baseline(descriptor, out, clock=_clock)
+    descriptor = compiled(model_root)
+    files = _files(out, baseline(model_root, out))
 
-    body = emitted.files[0].read_text(encoding="utf-8")
+    body = files[0].read_text(encoding="utf-8")
     for fragment in (
         "CREATE TYPE req_status AS ENUM ('DRAFT', 'APPROVED', 'RETIRED');",
         "CREATE TYPE node_kind AS ENUM ('BR', 'FR');",
@@ -168,7 +153,7 @@ def test_свёртка_модели_создаёт_всю_схему(model_root
     ):
         assert fragment in body, fragment
     assert "CHECK (mm_version < 2 OR rationale IS NOT NULL) NOT VALID" in body
-    assert descriptor["hash"] in emitted.files[-1].read_text(encoding="utf-8")
+    assert descriptor.hash in files[-1].read_text(encoding="utf-8")
 
 
 def test_метки_времени_в_одном_прогоне_не_совпадают(model_root, model_copy, tmp_path):
@@ -178,42 +163,40 @@ def test_метки_времени_в_одном_прогоне_не_совпа�
         raw["fields"].append({"id": 6, "name": "owner", "type": "text"})
         raw["fields"].append({"id": 8, "name": "note", "type": "text"})
 
-    before = _compile(model_root)
-    after = _edit(model_copy, mutate, "1.3.0")
-    emitted = emit(plan_release(after, before), out, clock=_clock)
+    _, output = _emit(model_root, model_copy, mutate, out)
 
-    names = [p.name for p in emitted.files]
+    names = [path.name for path in _files(out, output)]
     assert len(names) == len(set(names)), "имена уникальны"
 
 
 def test_повторный_прогон_не_создаёт_файлов(model_root, tmp_path):
     out = tmp_path / "changelog"
-    descriptor = _compile(model_root)
 
-    emitted = emit(plan_release(descriptor, descriptor), out, clock=_clock)
-    assert emitted.files == []
+    output = release(model_root, out, compiled(model_root))
+
+    assert output.released == ()
     assert not out.exists() or not list(out.rglob("*.sql"))
 
 
 def test_соседний_выпуск_не_перезаписывает_файл(model_root, model_copy, tmp_path):
     """Два выпуска подряд могут прийтись на одну секунду: занятое имя не перезаписывается."""
     out = tmp_path / "changelog"
-    first = _compile(model_root)
+    first = compiled(model_root)
     second = _edit(
         model_copy,
         lambda raw: raw["fields"].append({"id": 6, "name": "owner", "type": "text"}),
         "1.3.0",
     )
-    emitted_first = emit(plan_release(second, first), out, clock=_clock)
+    emitted_first = _files(out, release(model_copy, out, first))
 
-    third = _edit(
+    _edit(
         model_copy,
         lambda raw: raw["fields"].append({"id": 8, "name": "note", "type": "text"}),
         "1.4.0",
     )
-    emitted_second = emit(plan_release(third, second), out, clock=_clock)
+    emitted_second = _files(out, release(model_copy, out, second))
 
-    paths = [p.resolve() for p in emitted_first.files + emitted_second.files]
+    paths = [p.resolve() for p in emitted_first + emitted_second]
     assert len(paths) == len(set(paths)), "имена не пересекаются между выпусками"
-    for path in emitted_first.files:
+    for path in emitted_first:
         assert "model-1.3.0" in path.read_text(encoding="utf-8"), "первый выпуск не перезаписан"

@@ -1,0 +1,44 @@
+# Порядок применения миграций. Файл генерируется, править вручную не нужно.
+databaseChangeLog:
+- include:
+    file: core/Version20260915142233.sql
+    relativeToChangelogFile: true
+- include:
+    file: core/Version20260915142234.sql
+    relativeToChangelogFile: true
+- include:
+    file: ord/Version20260916090000.sql
+    relativeToChangelogFile: true
+- include:
+    file: prod/Version20260916090001.sql
+    relativeToChangelogFile: true
+- include:
+    file: rel/Version20260916090002.sql
+    relativeToChangelogFile: true
+- include:
+    file: rel/Version20260916090003.sql
+    relativeToChangelogFile: true
+- include:
+    file: rel/Version20260916090004.sql
+    relativeToChangelogFile: true
+- include:
+    file: core/Version20260916090005.sql
+    relativeToChangelogFile: true
+- include:
+    file: core/Version20260917183000.sql
+    relativeToChangelogFile: true
+- include:
+    file: cust/Version20260917183001.sql
+    relativeToChangelogFile: true
+- include:
+    file: ord/Version20260917183002.sql
+    relativeToChangelogFile: true
+- include:
+    file: ship/Version20260917183003.sql
+    relativeToChangelogFile: true
+- include:
+    file: core/Version20260917183004.sql
+    relativeToChangelogFile: true
+- include:
+    file: core/Version20260917183001.sql
+    relativeToChangelogFile: true

@@ -1,0 +1,25 @@
+1.2.0 -> 1.3.0
+  req_status.ARCHIVED: добавлено значение ARCHIVED [безопасно]
+  test_result: добавлено перечисление [безопасно]
+  BR.2: тип поля value: text -> int [удаляет данные]
+  BR.4: origin -> provenance [безопасно]
+  BR.6: добавлено поле owner [безопасно]
+  FR.3: добавлено поле due [безопасно]
+  TC: добавлен тип узла [безопасно]
+  realizes: to: добавлены типы TC [безопасно]
+  realizes.to_cardinality: to_cardinality: кардинальность ужесточена (0..* -> 0..5) [ломает контракт]
+  verified_by: добавлена связь [безопасно]
+ВНИМАНИЕ  BR.2: тип поля value: text -> int
+ВНИМАНИЕ  realizes.to_cardinality: to_cardinality: кардинальность ужесточена (0..* -> 0..5)
+выпущено: changelog/core/Version20260916090000.sql
+выпущено: changelog/core/Version20260916090001.sql
+выпущено: changelog/br/Version20260916090002.sql
+выпущено: changelog/br/Version20260916090003.sql
+выпущено: changelog/br/Version20260916090004.sql
+выпущено: changelog/fr/Version20260916090005.sql
+выпущено: changelog/fr/Version20260916090006.sql
+выпущено: changelog/tc/Version20260916090007.sql
+выпущено: changelog/rel/Version20260916090008.sql
+выпущено: changelog/rel/Version20260916090009.sql
+выпущено: changelog/rel/Version20260916090010.sql
+выпущено: changelog/core/Version20260916090011.sql

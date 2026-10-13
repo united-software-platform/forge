@@ -1,0 +1,13 @@
+1.1.0 -> 1.2.0
+  payment_method.CRYPTO: добавлено значение CRYPTO [безопасно]
+  CUST.4: добавлено поле phone [безопасно]
+  ORD.5: comment -> note [безопасно]
+  SHIP.2: удалено поле tracking, данные колонки tracking будут удалены [удаляет данные]
+  3: связь refers_to -> points_to [безопасно]
+ВНИМАНИЕ  SHIP.2: удалено поле tracking, данные колонки tracking будут удалены
+занято навсегда: SHIP.2 (tracking)
+выпущено: changelog/core/Version20260917183000.sql
+выпущено: changelog/cust/Version20260917183001.sql
+выпущено: changelog/ord/Version20260917183002.sql
+выпущено: changelog/ship/Version20260917183003.sql
+выпущено: changelog/core/Version20260917183004.sql
