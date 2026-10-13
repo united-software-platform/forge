@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "forge-local": {
+      "source": {
+        "source": "directory",
+        "path": "."
+      }
+    }
+  },
+  "enabledPlugins": {
+    "forge@forge-local": true
+  }
+}

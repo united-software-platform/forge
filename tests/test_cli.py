@@ -131,3 +131,105 @@ def test_запросы_проверок_печатаются(workspace, capsys)
     out = capsys.readouterr().out
     assert "realizes.from_cardinality" in out
     assert "links.suspect" in out
+
+
+@pytest.fixture
+def project(workspace, monkeypatch):
+    """Рабочая копия как проект git: корень по маркеру `.git`, переменные входа сброшены."""
+    (workspace["root"] / ".git").mkdir()
+    monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+    for variable in (
+        "FORGE_MODEL_DIR",
+        "FORGE_RELEASES_DIR",
+        "FORGE_CHANGELOG_DIR",
+        "FORGE_RUNS_DIR",
+    ):
+        monkeypatch.delenv(variable, raising=False)
+    return workspace
+
+
+def test_сборка_из_подкаталога_читает_модель_корня(project, monkeypatch, capsys):
+    monkeypatch.chdir(project["root"])
+    assert main(["build"]) == 0
+    from_root = capsys.readouterr().out
+
+    nested = project["root"] / "docs" / "deep"
+    nested.mkdir(parents=True)
+    monkeypatch.chdir(nested)
+    assert main(["build"]) == 0
+    assert capsys.readouterr().out == from_root
+
+
+def test_корень_проекта_из_переменной_claude(project, monkeypatch, tmp_path_factory):
+    monkeypatch.chdir(tmp_path_factory.mktemp("вне-проекта"))
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(project["root"]))
+
+    assert main(["build"]) == 0
+
+
+def test_без_корня_проекта_код_два(monkeypatch, tmp_path, capsys):
+    monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+    monkeypatch.delenv("FORGE_MODEL_DIR", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    assert main(["build"]) == 2
+    assert "корень проекта не найден" in capsys.readouterr().err
+
+
+def test_переменная_переносит_каталог_миграций(project, monkeypatch):
+    monkeypatch.chdir(project["root"])
+    monkeypatch.setenv("FORGE_CHANGELOG_DIR", "migrations")
+
+    assert main(["gen", "--baseline"]) == 0
+    assert (project["root"] / "migrations" / "master.yaml").exists()
+    assert not project["changelog"].exists()
+
+
+def test_ключ_перекрывает_переменную(project, monkeypatch):
+    monkeypatch.chdir(project["root"])
+    monkeypatch.setenv("FORGE_MODEL_DIR", str(project["root"] / "нет-такой-модели"))
+
+    assert main(["build"]) == 2
+    assert main(["build", "--model", str(project["model"])]) == 0
+
+
+def test_недоступное_хранилище_код_два(workspace, capsys):
+    code = main(
+        [
+            "verify",
+            "--model",
+            str(workspace["model"]),
+            "--changelog",
+            str(workspace["changelog"]),
+            "--dsn",
+            "postgresql://forge@127.0.0.1:1/forge?connect_timeout=2",
+        ]
+    )
+
+    assert code == 2
+    assert "хранилище недоступно" in capsys.readouterr().err
+
+
+def test_первый_прогон_цикла_рекомендует_gitignore(project, monkeypatch, capsys):
+    monkeypatch.chdir(project["root"])
+    ignore = project["root"] / ".gitignore"
+    ignore.write_text(".venv/\n", encoding="utf-8")
+    scenario = project["root"] / "scenario.yaml"
+    scenario.write_text("intent: INT-001\npositions: [поле FR.code]\n", encoding="utf-8")
+
+    assert main(["intent", "run", "--scenario", str(scenario)]) == 0
+    assert "добавьте в .gitignore строку model/intents/runs/" in capsys.readouterr().err
+    assert ignore.read_text(encoding="utf-8") == ".venv/\n"
+
+    assert main(["intent", "run", "--scenario", str(scenario)]) == 0
+    assert "РЕКОМЕНДАЦИЯ" not in capsys.readouterr().err
+
+
+def test_каталог_в_gitignore_не_рекомендуется(project, monkeypatch, capsys):
+    monkeypatch.chdir(project["root"])
+    (project["root"] / ".gitignore").write_text("/model/intents/runs/\n", encoding="utf-8")
+    scenario = project["root"] / "scenario.yaml"
+    scenario.write_text("intent: INT-001\npositions: [поле FR.code]\n", encoding="utf-8")
+
+    assert main(["intent", "run", "--scenario", str(scenario)]) == 0
+    assert "РЕКОМЕНДАЦИЯ" not in capsys.readouterr().err

@@ -19,15 +19,51 @@ Forge — кузница моделей данных: из описания мо
 
 ## Быстрый старт
 
-```bash
-make init          # подготовка проекта: .env, каталоги, ключи, инструменты
-make model-build   # дескриптор рабочей модели: версия и хеш
-make model-diff    # дельта против последней выпущенной версии
-make model-gen     # выпуск версии: миграции, дескриптор, запись в реестр
-make model-test    # тесты инструментов модели
+Forge поставляется плагином Claude Code. В проекте-потребителе плагин подключается коммитимым
+`.claude/settings.json` — копировать механизм в дерево проекта не нужно:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "forge-local": {
+      "source": { "source": "github", "repo": "united-software-platform/forge" }
+    }
+  },
+  "enabledPlugins": { "forge@forge-local": true }
+}
 ```
 
-Полный перечень команд — `make help`.
+Либо одной командой в сеансе Claude Code:
+
+```text
+/plugin install forge --marketplace united-software-platform/forge
+```
+
+После подключения в сеансе доступен вход `forge` и навыки `forge:model-change` и
+`forge:model-release`. Первый вызов входа собирает окружение зависимостей в каталоге данных
+плагина; нужен `uv` либо модуль `venv` интерпретатора Python 3.12+.
+
+```bash
+forge --help                  # подкоманды входа
+forge norms --rule MDL-001    # одно правило норм модели; forge norms — все нормы и глоссарий
+forge sample                  # образец минимальной модели
+```
+
+Модель проекта лежит в `model/forge.reqs.v1/` от корня проекта. Чтобы начать с образца, разложите
+его вывод по путям разделителей и соберите модель:
+
+```bash
+forge sample | awk '/^==> .* <==$/ { f = $2; system("mkdir -p \"$(dirname " f ")\""); next } { print > f }'
+forge build                   # дескриптор рабочей модели: версия и хеш
+forge diff                    # дельта против последней выпущенной версии
+```
+
+Изменение модели принимает навык `forge:model-change`, выпуск версии ведёт навык
+`forge:model-release`. Коды возврата входа: `0` — успех, `1` — ввод отвергнут или найдены
+расхождения, `2` — ошибка вызова или окружения.
+
+В репозитории-источнике плагин подключён его же `.claude/settings.json` через локальный
+маркетплейс. Окружение разработки — `make init`, тесты — `uv run --extra dev pytest -q`.
 
 ## Документация
 

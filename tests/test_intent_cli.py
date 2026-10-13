@@ -3,7 +3,7 @@
 import json
 
 import pytest
-from forge_model.cli import CYCLE_OPEN, DEFAULT_RUNS, main
+from forge_model.cli import DEFAULT_RUNS, EXIT_ENVIRONMENT, EXIT_REJECTED, main
 from forge_model.intent.engine import DEFAULT_MAX_ITERATIONS
 
 
@@ -28,28 +28,42 @@ def test_clean_cycle_returns_zero(scenario_file, tmp_path):
     assert run(scenario_file(""), tmp_path / "runs") == 0
 
 
-def test_halt_returns_open_cycle_code(scenario_file, tmp_path):
-    """Останов — код незамкнутого цикла, а не нулевой."""
+def test_halt_returns_rejected_code(scenario_file, tmp_path):
+    """Останов — код незамкнутого цикла `1`, а не нулевой."""
     code = run(scenario_file("stages:\n  implement: halted\n"), tmp_path / "runs")
-    assert code == CYCLE_OPEN
+    assert code == EXIT_REJECTED == 1
 
 
-def test_limit_exhausted_returns_open_cycle_code(scenario_file, tmp_path):
+def test_limit_exhausted_returns_rejected_code(scenario_file, tmp_path):
     """Прерывание по лимиту — тот же код незамкнутого цикла."""
     scenario = scenario_file("stages:\n  reconcile: rejected\n")
-    assert run(scenario, tmp_path / "runs", "--max-iterations", "2") == CYCLE_OPEN
+    assert run(scenario, tmp_path / "runs", "--max-iterations", "2") == EXIT_REJECTED
     assert len(list((tmp_path / "runs" / "INT-001").glob("*.json"))) == 2
 
 
-def test_process_error_returns_one(tmp_path):
-    """Ошибка процесса отличается кодом от незамкнутого цикла."""
-    assert main(["intent", "run", "--scenario", str(tmp_path / "нет.yaml")]) == 1
+def test_process_error_returns_environment_code(scenario_file, tmp_path):
+    """Ошибка процесса цикла отличается кодом `2` от незамкнутого цикла."""
+    code = run(scenario_file("stages:\n  implement: failed\n"), tmp_path / "runs")
+    assert code == EXIT_ENVIRONMENT == 2
 
 
-def test_broken_scenario_returns_one(scenario_file, tmp_path):
-    """Нечитаемый сценарий — тоже ошибка процесса."""
+def test_invalid_limit_returns_environment_code(scenario_file, tmp_path):
+    """Лимит меньше одной итерации — ошибка вызова."""
+    assert run(scenario_file(""), tmp_path / "runs", "--max-iterations", "0") == EXIT_ENVIRONMENT
+
+
+def test_missing_scenario_returns_environment_code(tmp_path):
+    """Нет файла сценария — ошибка вызова, код `2`."""
+    code = main(
+        ["intent", "run", "--scenario", str(tmp_path / "нет.yaml"), "--runs", str(tmp_path)]
+    )
+    assert code == EXIT_ENVIRONMENT
+
+
+def test_broken_scenario_is_rejected(scenario_file, tmp_path):
+    """Сценарий с неизвестным исходом — отвергнутый ввод, код `1`."""
     scenario = scenario_file("stages:\n  apply: готово\n")
-    assert run(scenario, tmp_path / "runs") == 1
+    assert run(scenario, tmp_path / "runs") == EXIT_REJECTED
 
 
 def test_reverse_edge_is_walked(scenario_file, tmp_path):

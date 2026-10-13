@@ -15,7 +15,7 @@ from typing import Any
 
 import yaml
 
-from .errors import ModelError
+from .errors import EnvironmentFault, ModelError
 
 SCALAR_TYPES = ("text", "int", "bool", "timestamp", "uuid")
 CODE_RE = re.compile(r"^[A-Z]{2,10}$")
@@ -209,7 +209,7 @@ def load_model(root: Path) -> Model:
     """Прочитать модель из каталога: `_manifest.yaml`, `types/*.yaml`, `relations.yaml`."""
     root = Path(root)
     if not root.is_dir():
-        raise ModelError("каталог модели не найден", where=str(root))
+        raise EnvironmentFault("каталог модели не найден", where=str(root))
 
     manifest = _read_yaml(root / "_manifest.yaml")
     _require_keys(

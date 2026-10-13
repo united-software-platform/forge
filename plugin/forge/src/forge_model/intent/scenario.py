@@ -14,7 +14,7 @@ from typing import Any
 
 import yaml
 
-from ..errors import ModelError
+from ..errors import EnvironmentFault, ModelError
 from .step import Outcome, Stage
 
 CODE_RE = re.compile(r"^INT-[0-9]{3}$")
@@ -51,7 +51,7 @@ def load_scenario(path: Path) -> Scenario:
     try:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     except FileNotFoundError as error:
-        raise ModelError("файл не найден", where=where) from error
+        raise EnvironmentFault("файл не найден", where=where) from error
     except yaml.YAMLError as error:
         raise ModelError(f"файл не читается как YAML: {error}", where=where) from error
 
