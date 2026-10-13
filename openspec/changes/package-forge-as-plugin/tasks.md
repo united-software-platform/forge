@@ -51,7 +51,7 @@
 ## 8. Приёмка
 
 - [x] 8.1 Пройти чек-лист `docs/spec/agent-plugin-blueprint/conformance.md` и записать `docs/reports/apb-conformance.md` в форме базового отчёта: исходы, утверждённые отклонения (оси применимости, зависимости, `venv-target`, pytest, локальное отличие `CLAUDE.md`), долг `layer-forge-core`; проверка: все 26 несоответствий, отнесённых к этому change, имеют исход «Соответствует» либо названную причину
-- [ ] 8.2 Прогнать полный набор: `uv run --extra dev pytest -q`, `ruff check`, `ruff format --check`, `mypy`, `sh tools/make-lint/check.sh`, `openspec validate --all --strict`; проверка: все команды завершаются кодом `0`
+- [x] 8.2 Прогнать полный набор: `uv run --extra dev pytest -q`, `ruff check`, `ruff format --check`, `mypy`, `sh tools/make-lint/check.sh`, `openspec validate --all --strict`; проверка: все команды завершаются кодом `0`
 
 ## Workflow follow-up
 
