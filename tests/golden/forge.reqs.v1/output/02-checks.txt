@@ -1,0 +1,30 @@
+-- realizes.from_cardinality.min: узел без обязательной связи realizes (минимум 1)
+SELECT n.id, n.kind, count(l.id) AS actual
+FROM node n
+LEFT JOIN link l ON l.src_id = n.id AND l.rel = 'realizes'
+  AND l.retired_at IS NULL
+WHERE n.retired_at IS NULL AND n.kind IN ('FR')
+GROUP BY n.id, n.kind
+HAVING count(l.id) < 1;
+
+-- realizes.acyclic: цикл по связи realizes
+WITH RECURSIVE walk(root, node, depth) AS (
+  SELECT src_id, dst_id, 1 FROM link
+   WHERE rel = 'realizes' AND retired_at IS NULL
+  UNION ALL
+  SELECT w.root, l.dst_id, w.depth + 1
+  FROM walk w
+  JOIN link l ON l.src_id = w.node AND l.rel = 'realizes'
+   AND l.retired_at IS NULL
+  WHERE w.depth < 64
+)
+SELECT DISTINCT root FROM walk WHERE node = root;
+
+-- links.suspect: связь подтверждена против устаревшей ревизии цели
+SELECT l.id, l.rel, l.conf_rev, max(r.rev) AS current_rev
+FROM link l
+JOIN node_revision r ON r.node_id = l.dst_id
+WHERE l.retired_at IS NULL
+GROUP BY l.id, l.rel, l.conf_rev
+HAVING l.conf_rev < max(r.rev);
+

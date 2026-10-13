@@ -1,26 +1,30 @@
-"""Движок цикла: порядок стадий, итерации, лимит, отчёты, подмена шага."""
+"""Цикл намерения: порядок стадий, итерации, лимит, отчёты, подмена шага."""
 
 import json
 
-import pytest
-from forge_model.errors import ModelError
-from forge_model.intent.engine import DEFAULT_MAX_ITERATIONS, run_cycle
-from forge_model.intent.mock import steps_for
-from forge_model.intent.scenario import Scenario
-from forge_model.intent.state import State
-from forge_model.intent.step import STAGES, Outcome, Stage, StepResult, Steps
+from forge_model.intent.application.contracts import CLOSED, PROCESS_ERROR, StepResult, Steps
+from forge_model.intent.application.run_intent import DEFAULT_MAX_ITERATIONS
+from forge_model.intent.domain import STAGES, IntentState, RunScenario, Stage, StageOutcome
+from forge_model.intent.infrastructure import ScenarioSteps
+
+from tests.conftest import run_intent
 
 
 def scenario(**stages):
     """Сценарий с позициями и заданными исходами стадий."""
-    outcomes = {
-        Stage(name): tuple(Outcome(value) for value in values) for name, values in stages.items()
-    }
-    return Scenario(code="INT-001", positions=("поле FR.code",), outcomes=outcomes)
+    outcomes = tuple(
+        (Stage(name), tuple(StageOutcome(value) for value in values))
+        for name, values in stages.items()
+    )
+    return RunScenario(code="INT-001", positions=("поле FR.code",), outcomes=outcomes)
 
 
 def run(tmp_path, spec, steps=None, **options):
-    return run_cycle(spec, steps or steps_for(spec), runs_dir=tmp_path, **options)
+    return run_intent(tmp_path, spec, steps, **options)
+
+
+def steps_for(spec) -> Steps:
+    return ScenarioSteps().steps(spec)
 
 
 def reports_of(tmp_path, code="INT-001"):
@@ -34,8 +38,8 @@ def payload(path):
 def test_clean_pass_confirms_intent(tmp_path):
     """Все стадии пройдены — намерение подтверждено, цикл замкнут."""
     outcome = run(tmp_path, scenario())
-    assert outcome.state is State.CONFIRMED
-    assert outcome.closed
+    assert outcome.state == IntentState.CONFIRMED.value
+    assert outcome.outcome == CLOSED
     assert outcome.iterations == 0
 
 
@@ -58,14 +62,14 @@ def test_halt_stops_remaining_stages(tmp_path):
     outcome = run(tmp_path, scenario(implement=["halted"]))
     stages = [entry["stage"] for entry in payload(reports_of(tmp_path)[0])["stages"]]
     assert stages == ["intent", "validate", "implement"]
-    assert outcome.state is State.VALIDATED
-    assert not outcome.closed
+    assert outcome.state == IntentState.VALIDATED.value
+    assert outcome.outcome != CLOSED
 
 
 def test_rework_opens_next_iteration(tmp_path):
     """Расхождение на первой итерации и совпадение на второй замыкают цикл."""
     outcome = run(tmp_path, scenario(reconcile=["rejected", "passed"]))
-    assert outcome.state is State.CONFIRMED
+    assert outcome.state == IntentState.CONFIRMED.value
     assert outcome.iterations == 1
     assert len(reports_of(tmp_path)) == 2
 
@@ -73,9 +77,9 @@ def test_rework_opens_next_iteration(tmp_path):
 def test_limit_aborts_cycle(tmp_path):
     """Исчерпание лимита прерывает цикл и не помечает намерение подтверждённым."""
     outcome = run(tmp_path, scenario(reconcile=["rejected"]), max_iterations=3)
-    assert outcome.state is State.ABORTED
+    assert outcome.state == IntentState.ABORTED.value
     assert outcome.iterations == 3
-    assert not outcome.closed
+    assert outcome.outcome != CLOSED
     assert [path.name for path in reports_of(tmp_path)] == ["1.json", "2.json", "3.json"]
 
 
@@ -91,7 +95,7 @@ def test_confirmed_rerun_does_not_count_iteration(tmp_path):
     """Повторный прогон подтверждённого намерения номер итерации не двигает."""
     run(tmp_path, scenario())
     outcome = run(tmp_path, scenario())
-    assert outcome.state is State.CONFIRMED
+    assert outcome.state == IntentState.CONFIRMED.value
     assert [path.name for path in reports_of(tmp_path)] == ["1.json"]
 
 
@@ -104,8 +108,9 @@ def test_default_limit_is_three(tmp_path):
 
 def test_limit_below_one_is_process_error(tmp_path):
     """Лимит меньше одной итерации — ошибка процесса."""
-    with pytest.raises(ModelError, match="меньше одной"):
-        run(tmp_path, scenario(), max_iterations=0)
+    outcome = run(tmp_path, scenario(), max_iterations=0)
+    assert outcome.outcome == PROCESS_ERROR
+    assert "меньше одной" in outcome.discrepancies[0].message
 
 
 def test_incomplete_set_runs_no_stage(tmp_path):
@@ -114,8 +119,9 @@ def test_incomplete_set_runs_no_stage(tmp_path):
     partial: Steps = {
         stage: step for stage, step in steps_for(spec).items() if stage is not Stage.RECONCILE
     }
-    with pytest.raises(ModelError, match="reconcile"):
-        run_cycle(spec, partial, runs_dir=tmp_path)
+    outcome = run(tmp_path, spec, partial)
+    assert outcome.outcome == PROCESS_ERROR
+    assert "reconcile" in outcome.discrepancies[0].message
     assert not tmp_path.exists() or not reports_of(tmp_path)
 
 
@@ -141,9 +147,12 @@ def test_report_written_on_process_error(tmp_path):
     """Отчёт пишется и при ошибке процесса, называя стадию."""
     spec = scenario()
     steps = dict(steps_for(spec))
-    steps[Stage.GENERATE] = lambda context: StepResult(outcome=Outcome.FAILED, message="нет места")
-    with pytest.raises(ModelError, match="нет места"):
-        run_cycle(spec, steps, runs_dir=tmp_path)
+    steps[Stage.GENERATE] = lambda context: StepResult(
+        outcome=StageOutcome.FAILED, message="нет места"
+    )
+    outcome = run(tmp_path, spec, steps)
+    assert outcome.outcome == PROCESS_ERROR
+    assert outcome.discrepancies[0].message == "нет места"
     stored = payload(reports_of(tmp_path)[0])
     assert "преобразование в миграцию" in stored["reason"]
 
@@ -156,21 +165,21 @@ def test_numbering_continues_from_stored_reports(tmp_path):
 
 
 def test_step_replacement_leaves_engine_intact(tmp_path):
-    """Предметный шаг встаёт на место подставного, движок не меняется."""
+    """Предметный шаг встаёт на место подставного, цикл не меняется."""
     spec = scenario()
     calls: list[int] = []
 
     def real_apply(context):
         """Шаг, ведущий себя как предметный: накат ему недоступен, он просит его снаружи."""
         calls.append(context.iteration)
-        return StepResult(outcome=Outcome.HALTED, message="накат выполняется целью make")
+        return StepResult(outcome=StageOutcome.HALTED, message="накат выполняется целью make")
 
     steps = dict(steps_for(spec))
     steps[Stage.APPLY] = real_apply
-    outcome = run_cycle(spec, steps, runs_dir=tmp_path)
+    outcome = run(tmp_path, spec, steps)
 
     assert calls == [1]
-    assert outcome.state is State.RELEASED
+    assert outcome.state == IntentState.RELEASED.value
     stages = [entry["stage"] for entry in payload(reports_of(tmp_path)[0])["stages"]]
     assert stages == ["intent", "validate", "implement", "generate", "apply"]
 

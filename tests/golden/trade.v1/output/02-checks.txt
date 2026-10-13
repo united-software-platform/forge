@@ -1,0 +1,127 @@
+-- placed_by.from_cardinality.min: узел без обязательной связи placed_by (минимум 1)
+SELECT n.id, n.kind, count(l.id) AS actual
+FROM node n
+LEFT JOIN link l ON l.src_id = n.id AND l.rel = 'placed_by'
+  AND l.retired_at IS NULL
+WHERE n.retired_at IS NULL AND n.kind IN ('ORD')
+GROUP BY n.id, n.kind
+HAVING count(l.id) < 1;
+
+-- placed_by.from_cardinality.max: узел со связями placed_by сверх предела (максимум 1)
+SELECT n.id, n.kind, count(l.id) AS actual
+FROM node n
+LEFT JOIN link l ON l.src_id = n.id AND l.rel = 'placed_by'
+  AND l.retired_at IS NULL
+WHERE n.retired_at IS NULL AND n.kind IN ('ORD')
+GROUP BY n.id, n.kind
+HAVING count(l.id) > 1;
+
+-- belongs_to.from_cardinality.min: узел без обязательной связи belongs_to (минимум 1)
+SELECT n.id, n.kind, count(l.id) AS actual
+FROM node n
+LEFT JOIN link l ON l.src_id = n.id AND l.rel = 'belongs_to'
+  AND l.retired_at IS NULL
+WHERE n.retired_at IS NULL AND n.kind IN ('ITEM')
+GROUP BY n.id, n.kind
+HAVING count(l.id) < 1;
+
+-- belongs_to.from_cardinality.max: узел со связями belongs_to сверх предела (максимум 1)
+SELECT n.id, n.kind, count(l.id) AS actual
+FROM node n
+LEFT JOIN link l ON l.src_id = n.id AND l.rel = 'belongs_to'
+  AND l.retired_at IS NULL
+WHERE n.retired_at IS NULL AND n.kind IN ('ITEM')
+GROUP BY n.id, n.kind
+HAVING count(l.id) > 1;
+
+-- refers_to.from_cardinality.min: узел без обязательной связи refers_to (минимум 1)
+SELECT n.id, n.kind, count(l.id) AS actual
+FROM node n
+LEFT JOIN link l ON l.src_id = n.id AND l.rel = 'refers_to'
+  AND l.retired_at IS NULL
+WHERE n.retired_at IS NULL AND n.kind IN ('ITEM')
+GROUP BY n.id, n.kind
+HAVING count(l.id) < 1;
+
+-- refers_to.from_cardinality.max: узел со связями refers_to сверх предела (максимум 1)
+SELECT n.id, n.kind, count(l.id) AS actual
+FROM node n
+LEFT JOIN link l ON l.src_id = n.id AND l.rel = 'refers_to'
+  AND l.retired_at IS NULL
+WHERE n.retired_at IS NULL AND n.kind IN ('ITEM')
+GROUP BY n.id, n.kind
+HAVING count(l.id) > 1;
+
+-- placed_by.acyclic: цикл по связи placed_by
+WITH RECURSIVE walk(root, node, depth) AS (
+  SELECT src_id, dst_id, 1 FROM link
+   WHERE rel = 'placed_by' AND retired_at IS NULL
+  UNION ALL
+  SELECT w.root, l.dst_id, w.depth + 1
+  FROM walk w
+  JOIN link l ON l.src_id = w.node AND l.rel = 'placed_by'
+   AND l.retired_at IS NULL
+  WHERE w.depth < 64
+)
+SELECT DISTINCT root FROM walk WHERE node = root;
+
+-- belongs_to.acyclic: цикл по связи belongs_to
+WITH RECURSIVE walk(root, node, depth) AS (
+  SELECT src_id, dst_id, 1 FROM link
+   WHERE rel = 'belongs_to' AND retired_at IS NULL
+  UNION ALL
+  SELECT w.root, l.dst_id, w.depth + 1
+  FROM walk w
+  JOIN link l ON l.src_id = w.node AND l.rel = 'belongs_to'
+   AND l.retired_at IS NULL
+  WHERE w.depth < 64
+)
+SELECT DISTINCT root FROM walk WHERE node = root;
+
+-- refers_to.acyclic: цикл по связи refers_to
+WITH RECURSIVE walk(root, node, depth) AS (
+  SELECT src_id, dst_id, 1 FROM link
+   WHERE rel = 'refers_to' AND retired_at IS NULL
+  UNION ALL
+  SELECT w.root, l.dst_id, w.depth + 1
+  FROM walk w
+  JOIN link l ON l.src_id = w.node AND l.rel = 'refers_to'
+   AND l.retired_at IS NULL
+  WHERE w.depth < 64
+)
+SELECT DISTINCT root FROM walk WHERE node = root;
+
+-- shipped_by.acyclic: цикл по связи shipped_by
+WITH RECURSIVE walk(root, node, depth) AS (
+  SELECT src_id, dst_id, 1 FROM link
+   WHERE rel = 'shipped_by' AND retired_at IS NULL
+  UNION ALL
+  SELECT w.root, l.dst_id, w.depth + 1
+  FROM walk w
+  JOIN link l ON l.src_id = w.node AND l.rel = 'shipped_by'
+   AND l.retired_at IS NULL
+  WHERE w.depth < 64
+)
+SELECT DISTINCT root FROM walk WHERE node = root;
+
+-- replaces.acyclic: цикл по связи replaces
+WITH RECURSIVE walk(root, node, depth) AS (
+  SELECT src_id, dst_id, 1 FROM link
+   WHERE rel = 'replaces' AND retired_at IS NULL
+  UNION ALL
+  SELECT w.root, l.dst_id, w.depth + 1
+  FROM walk w
+  JOIN link l ON l.src_id = w.node AND l.rel = 'replaces'
+   AND l.retired_at IS NULL
+  WHERE w.depth < 64
+)
+SELECT DISTINCT root FROM walk WHERE node = root;
+
+-- links.suspect: связь подтверждена против устаревшей ревизии цели
+SELECT l.id, l.rel, l.conf_rev, max(r.rev) AS current_rev
+FROM link l
+JOIN node_revision r ON r.node_id = l.dst_id
+WHERE l.retired_at IS NULL
+GROUP BY l.id, l.rel, l.conf_rev
+HAVING l.conf_rev < max(r.rev);
+

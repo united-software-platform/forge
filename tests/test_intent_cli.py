@@ -4,7 +4,7 @@ import json
 
 import pytest
 from forge_model.cli import DEFAULT_RUNS, EXIT_ENVIRONMENT, EXIT_REJECTED, main
-from forge_model.intent.engine import DEFAULT_MAX_ITERATIONS
+from forge_model.intent.application.run_intent import DEFAULT_MAX_ITERATIONS
 
 
 @pytest.fixture

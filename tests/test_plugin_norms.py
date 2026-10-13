@@ -3,8 +3,8 @@
 import re
 from pathlib import Path
 
-from forge_model import delivery
 from forge_model.cli import main
+from forge_model.delivery import infrastructure as delivery
 
 RULE = re.compile(r"^\*\*\[(MDL-\d{3})\]\*\*", re.MULTILINE)
 

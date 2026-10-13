@@ -1,0 +1,52 @@
+# Реестр выпусков. Файл генерируется, править вручную не нужно.
+- version: 1.2.0
+  hash: sha256:75628d78d447f9b0731f4b1879bbf6e3f88961050eb9eaaece117f72b59031da
+  files:
+  - path: core/Version20260915142233.sql
+    checksum: sha256:237ff273f7e641aaeb478d1f4da562be45a62cf3964cc7976ff69b799f9378cd
+  - path: core/Version20260915142234.sql
+    checksum: sha256:4ee3804405caa0858c37d08f4a4d49622e84a80bd02723daca46517a23c679d0
+- version: 1.3.0
+  hash: sha256:13c6c202aa65b263719b42f10878a1bde954033d508b9f458f4d4789d3cfcb91
+  files:
+  - path: core/Version20260916090000.sql
+    checksum: sha256:41e8c93053aa94ba780b57fe1e17a63b16aaae4523dec8c493cf067dbfe11dea
+  - path: core/Version20260916090001.sql
+    checksum: sha256:3adfd751863ecf7de75e22bb6ba633c7fb5de434e881b46913fcb841e78bdbe4
+  - path: br/Version20260916090002.sql
+    checksum: sha256:4fd47fff6fa48c6989fd67e061ca3fb2ba2ffd2baba42b08adeb544684d4a3ec
+  - path: br/Version20260916090003.sql
+    checksum: sha256:722b828da6bc067dcd7d0a778a8aa34a3e978727245d8bf702aacc2bd5b4a8d5
+  - path: br/Version20260916090004.sql
+    checksum: sha256:7e7ca77d84a52fd8f80ac3312a2069fab17b0ef23a5e1235d6d28f340e71e53c
+  - path: fr/Version20260916090005.sql
+    checksum: sha256:e70a0fbd8237f4e1a0885df1a20b2cad10beaf0b7af74881c8f237305ffe7cf1
+  - path: fr/Version20260916090006.sql
+    checksum: sha256:84ef5941abb9201874cfd676c95dc0c7a8aefa6ad5f18519718f4598e6d32caa
+  - path: tc/Version20260916090007.sql
+    checksum: sha256:eb703527ca5a791c79bd00b14518f041991f1d5394f48367540a1fd99fbcf1e6
+  - path: rel/Version20260916090008.sql
+    checksum: sha256:07514eacfad2cf16f396c261f629fce038fdd735cd475caeb138de46649a0a35
+  - path: rel/Version20260916090009.sql
+    checksum: sha256:7941e5672a0e7fce875e9bda21a651132d89a2135c1a703126d2aa4eed6a6b9f
+  - path: rel/Version20260916090010.sql
+    checksum: sha256:c542d9ff4e232edf283981a869f9f19d568cf1d014d45f06cbb394cec0371b07
+  - path: core/Version20260916090011.sql
+    checksum: sha256:c1a73a03f266bf7553548dec1652f70e79be4498e9a5b4e511c322a1ea31d04e
+- version: 1.4.0
+  hash: sha256:e61c3a6b00b3bb046cd4e7eae8505547b104ac3b637031b313dece90c74bf19b
+  files:
+  - path: br/Version20260917183000.sql
+    checksum: sha256:4cae8bf4988fcb45d0a42c4c7d16044e91a4a8c621f7b8915b057ebe9e463a7c
+  - path: br/Version20260917183001.sql
+    checksum: sha256:5e966f69f3f3eb8e2eadc3a8b1915fa783f2c34e667ebd1e56a41b4352d70aae
+  - path: tc/Version20260917183002.sql
+    checksum: sha256:0e0fa14de35243121a1c1629496d9210e4b6eb7548375f13d5085ff8a2cd130b
+  - path: rel/Version20260917183003.sql
+    checksum: sha256:23fff6588e01140f946c94d5ff1ea1a1578f5b50e900b5a20ee79dea67a47efc
+  - path: rel/Version20260917183004.sql
+    checksum: sha256:650f1b002987c7c6b5d7f485f24724b43327b178902339d494adaf0b4f4029ad
+  - path: rel/Version20260917183005.sql
+    checksum: sha256:62d9e1c4d9edb5e01501b246aa681a73073b59b7b6a299ac78239de0a18c07a9
+  - path: core/Version20260917183006.sql
+    checksum: sha256:9f60e69d158bb4d8e52937fe583e59f6317de0bc117b6ce4e7cce3a79ba69ff4

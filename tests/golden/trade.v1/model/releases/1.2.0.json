@@ -1,0 +1,465 @@
+{
+  "enums": [
+    {
+      "id": 1,
+      "name": "order_status",
+      "taken": {
+        "codes": [],
+        "fields": [],
+        "names": []
+      },
+      "values": [
+        {
+          "id": 1,
+          "name": "DRAFT"
+        },
+        {
+          "id": 2,
+          "name": "PAID"
+        },
+        {
+          "id": 3,
+          "name": "SHIPPED"
+        },
+        {
+          "id": 4,
+          "name": "CANCELLED"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "payment_method",
+      "taken": {
+        "codes": [],
+        "fields": [],
+        "names": []
+      },
+      "values": [
+        {
+          "id": 1,
+          "name": "CARD"
+        },
+        {
+          "id": 2,
+          "name": "CASH"
+        },
+        {
+          "id": 3,
+          "name": "TRANSFER"
+        },
+        {
+          "id": 4,
+          "name": "CRYPTO"
+        }
+      ]
+    }
+  ],
+  "hash": "sha256:1da6900a4dd441e5d62fd4742356676017d711de75293b7037dc09757e127ba3",
+  "major": 1,
+  "minor": 2,
+  "model": "trade",
+  "patch": 0,
+  "relations": [
+    {
+      "acyclic": true,
+      "description": "Заказ размещён покупателем",
+      "from": [
+        "ORD"
+      ],
+      "from_cardinality": {
+        "max": 1,
+        "min": 1
+      },
+      "id": 1,
+      "name": "placed_by",
+      "to": [
+        "CUST"
+      ],
+      "to_cardinality": {
+        "max": null,
+        "min": 0
+      }
+    },
+    {
+      "acyclic": true,
+      "description": "Строка принадлежит заказу",
+      "from": [
+        "ITEM",
+        "SHIP"
+      ],
+      "from_cardinality": {
+        "max": 1,
+        "min": 1
+      },
+      "id": 2,
+      "name": "belongs_to",
+      "to": [
+        "ORD"
+      ],
+      "to_cardinality": {
+        "max": null,
+        "min": 0
+      }
+    },
+    {
+      "acyclic": true,
+      "description": "Строка ссылается на товар",
+      "from": [
+        "ITEM"
+      ],
+      "from_cardinality": {
+        "max": 1,
+        "min": 1
+      },
+      "id": 3,
+      "name": "points_to",
+      "to": [
+        "PROD"
+      ],
+      "to_cardinality": {
+        "max": null,
+        "min": 0
+      }
+    },
+    {
+      "acyclic": true,
+      "description": "Заказ отгружен отправлением",
+      "from": [
+        "ORD"
+      ],
+      "from_cardinality": {
+        "max": null,
+        "min": 0
+      },
+      "id": 4,
+      "name": "shipped_by",
+      "to": [
+        "SHIP"
+      ],
+      "to_cardinality": {
+        "max": 1,
+        "min": 0
+      }
+    },
+    {
+      "acyclic": true,
+      "description": "Товар заменяет снятый с продажи",
+      "from": [
+        "PROD"
+      ],
+      "from_cardinality": {
+        "max": null,
+        "min": 0
+      },
+      "id": 5,
+      "name": "replaces",
+      "to": [
+        "PROD"
+      ],
+      "to_cardinality": {
+        "max": null,
+        "min": 0
+      }
+    },
+    {
+      "acyclic": true,
+      "description": null,
+      "from": [
+        "ORD"
+      ],
+      "from_cardinality": {
+        "max": null,
+        "min": 0
+      },
+      "id": 6,
+      "name": "supersedes",
+      "to": [
+        "ORD"
+      ],
+      "to_cardinality": {
+        "max": null,
+        "min": 0
+      }
+    }
+  ],
+  "types": [
+    {
+      "code": "CUST",
+      "code_pattern": "CUST-{NNN}",
+      "description": null,
+      "fields": [
+        {
+          "column": "full_name",
+          "description": null,
+          "id": 1,
+          "kind": "scalar",
+          "name": "full_name",
+          "required": true,
+          "required_since": 0,
+          "type": "text"
+        },
+        {
+          "column": "email",
+          "description": null,
+          "id": 2,
+          "kind": "scalar",
+          "name": "email",
+          "required": true,
+          "required_since": 0,
+          "type": "text"
+        },
+        {
+          "column": "registered_at",
+          "description": null,
+          "id": 3,
+          "kind": "scalar",
+          "name": "registered_at",
+          "required": true,
+          "required_since": 0,
+          "type": "timestamp"
+        },
+        {
+          "column": "phone",
+          "description": null,
+          "id": 4,
+          "kind": "scalar",
+          "name": "phone",
+          "required": false,
+          "required_since": null,
+          "type": "text"
+        }
+      ],
+      "id": 1,
+      "name_en": "Customer",
+      "name_ru": "Покупатель",
+      "table": "cust_revision",
+      "taken": {
+        "codes": [],
+        "fields": [],
+        "names": []
+      }
+    },
+    {
+      "code": "PROD",
+      "code_pattern": "PROD-{NNN}",
+      "description": null,
+      "fields": [
+        {
+          "column": "title",
+          "description": null,
+          "id": 1,
+          "kind": "scalar",
+          "name": "title",
+          "required": true,
+          "required_since": 0,
+          "type": "text"
+        },
+        {
+          "column": "sku",
+          "description": null,
+          "id": 2,
+          "kind": "scalar",
+          "name": "sku",
+          "required": true,
+          "required_since": 0,
+          "type": "text"
+        },
+        {
+          "column": "price",
+          "description": "Цена в копейках",
+          "id": 3,
+          "kind": "scalar",
+          "name": "price",
+          "required": true,
+          "required_since": 0,
+          "type": "int"
+        },
+        {
+          "column": "active",
+          "description": null,
+          "id": 4,
+          "kind": "scalar",
+          "name": "active",
+          "required": true,
+          "required_since": 1,
+          "type": "bool"
+        }
+      ],
+      "id": 2,
+      "name_en": "Product",
+      "name_ru": "Товар",
+      "table": "prod_revision",
+      "taken": {
+        "codes": [],
+        "fields": [],
+        "names": []
+      }
+    },
+    {
+      "code": "ORD",
+      "code_pattern": "ORD-{NNN}",
+      "description": null,
+      "fields": [
+        {
+          "column": "number",
+          "description": null,
+          "id": 1,
+          "kind": "scalar",
+          "name": "number",
+          "required": true,
+          "required_since": 0,
+          "type": "text"
+        },
+        {
+          "column": "status",
+          "description": null,
+          "id": 2,
+          "kind": "enum",
+          "name": "status",
+          "required": true,
+          "required_since": 0,
+          "type": "order_status",
+          "values": [
+            "DRAFT",
+            "PAID",
+            "SHIPPED",
+            "CANCELLED"
+          ]
+        },
+        {
+          "column": "payment",
+          "description": null,
+          "id": 3,
+          "kind": "enum",
+          "name": "payment",
+          "required": false,
+          "required_since": null,
+          "type": "payment_method",
+          "values": [
+            "CARD",
+            "CASH",
+            "TRANSFER",
+            "CRYPTO"
+          ]
+        },
+        {
+          "column": "placed_at",
+          "description": null,
+          "id": 4,
+          "kind": "scalar",
+          "name": "placed_at",
+          "required": true,
+          "required_since": 0,
+          "type": "timestamp"
+        },
+        {
+          "column": "note",
+          "description": null,
+          "id": 5,
+          "kind": "scalar",
+          "name": "note",
+          "required": false,
+          "required_since": null,
+          "type": "text"
+        },
+        {
+          "column": "discount",
+          "description": null,
+          "id": 6,
+          "kind": "scalar",
+          "name": "discount",
+          "required": false,
+          "required_since": null,
+          "type": "int"
+        }
+      ],
+      "id": 3,
+      "name_en": "Order",
+      "name_ru": "Заказ",
+      "table": "ord_revision",
+      "taken": {
+        "codes": [],
+        "fields": [],
+        "names": []
+      }
+    },
+    {
+      "code": "ITEM",
+      "code_pattern": "ITEM-{NNN}",
+      "description": null,
+      "fields": [
+        {
+          "column": "quantity",
+          "description": null,
+          "id": 1,
+          "kind": "scalar",
+          "name": "quantity",
+          "required": true,
+          "required_since": 0,
+          "type": "int"
+        },
+        {
+          "column": "price",
+          "description": "Цена на момент заказа",
+          "id": 2,
+          "kind": "scalar",
+          "name": "price",
+          "required": true,
+          "required_since": 0,
+          "type": "int"
+        }
+      ],
+      "id": 4,
+      "name_en": "Order Item",
+      "name_ru": "Строка заказа",
+      "table": "item_revision",
+      "taken": {
+        "codes": [],
+        "fields": [],
+        "names": []
+      }
+    },
+    {
+      "code": "SHIP",
+      "code_pattern": "SHIP-{NNN}",
+      "description": null,
+      "fields": [
+        {
+          "column": "carrier",
+          "description": null,
+          "id": 1,
+          "kind": "scalar",
+          "name": "carrier",
+          "required": true,
+          "required_since": 0,
+          "type": "text"
+        },
+        {
+          "column": "shipped_at",
+          "description": null,
+          "id": 3,
+          "kind": "scalar",
+          "name": "shipped_at",
+          "required": false,
+          "required_since": null,
+          "type": "timestamp"
+        }
+      ],
+      "id": 5,
+      "name_en": "Shipment",
+      "name_ru": "Отгрузка",
+      "table": "ship_revision",
+      "taken": {
+        "codes": [],
+        "fields": [
+          2
+        ],
+        "names": [
+          "tracking"
+        ]
+      }
+    }
+  ],
+  "version": "1.2.0"
+}

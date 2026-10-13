@@ -1,0 +1,281 @@
+{
+  "enums": [
+    {
+      "id": 1,
+      "name": "req_status",
+      "taken": {
+        "codes": [],
+        "fields": [],
+        "names": []
+      },
+      "values": [
+        {
+          "id": 1,
+          "name": "DRAFT"
+        },
+        {
+          "id": 2,
+          "name": "APPROVED"
+        },
+        {
+          "id": 3,
+          "name": "RETIRED"
+        },
+        {
+          "id": 4,
+          "name": "ARCHIVED"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "test_result",
+      "taken": {
+        "codes": [],
+        "fields": [],
+        "names": []
+      },
+      "values": [
+        {
+          "id": 1,
+          "name": "PASS"
+        },
+        {
+          "id": 2,
+          "name": "FAIL"
+        }
+      ]
+    }
+  ],
+  "hash": "sha256:13c6c202aa65b263719b42f10878a1bde954033d508b9f458f4d4789d3cfcb91",
+  "major": 1,
+  "minor": 3,
+  "model": "forge.reqs",
+  "patch": 0,
+  "relations": [
+    {
+      "acyclic": true,
+      "description": "Функциональное требование реализует бизнес-требование",
+      "from": [
+        "FR"
+      ],
+      "from_cardinality": {
+        "max": null,
+        "min": 1
+      },
+      "id": 1,
+      "name": "realizes",
+      "to": [
+        "BR",
+        "TC"
+      ],
+      "to_cardinality": {
+        "max": 5,
+        "min": 0
+      }
+    },
+    {
+      "acyclic": false,
+      "description": null,
+      "from": [
+        "FR"
+      ],
+      "from_cardinality": {
+        "max": 3,
+        "min": 0
+      },
+      "id": 2,
+      "name": "verified_by",
+      "to": [
+        "TC"
+      ],
+      "to_cardinality": {
+        "max": null,
+        "min": 0
+      }
+    }
+  ],
+  "types": [
+    {
+      "code": "BR",
+      "code_pattern": "BR-{NNN}",
+      "description": "Потребность бизнеса, из которой выводятся функциональные требования",
+      "fields": [
+        {
+          "column": "title",
+          "description": "Краткая формулировка",
+          "id": 1,
+          "kind": "scalar",
+          "name": "title",
+          "required": true,
+          "required_since": 0,
+          "type": "text"
+        },
+        {
+          "column": "value",
+          "description": null,
+          "id": 2,
+          "kind": "scalar",
+          "name": "value",
+          "required": true,
+          "required_since": 0,
+          "type": "int"
+        },
+        {
+          "column": "status",
+          "description": null,
+          "id": 3,
+          "kind": "enum",
+          "name": "status",
+          "required": true,
+          "required_since": 0,
+          "type": "req_status",
+          "values": [
+            "DRAFT",
+            "APPROVED",
+            "RETIRED",
+            "ARCHIVED"
+          ]
+        },
+        {
+          "column": "provenance",
+          "description": null,
+          "id": 4,
+          "kind": "scalar",
+          "name": "provenance",
+          "required": false,
+          "required_since": null,
+          "type": "text"
+        },
+        {
+          "column": "rationale",
+          "description": null,
+          "id": 5,
+          "kind": "scalar",
+          "name": "rationale",
+          "required": true,
+          "required_since": 2,
+          "type": "text"
+        },
+        {
+          "column": "owner",
+          "description": null,
+          "id": 6,
+          "kind": "scalar",
+          "name": "owner",
+          "required": false,
+          "required_since": null,
+          "type": "text"
+        }
+      ],
+      "id": 1,
+      "name_en": "Business Requirement",
+      "name_ru": "Бизнес-требование",
+      "table": "br_revision",
+      "taken": {
+        "codes": [
+          19
+        ],
+        "fields": [
+          7
+        ],
+        "names": [
+          "priority"
+        ]
+      }
+    },
+    {
+      "code": "FR",
+      "code_pattern": "FR-{NNN}",
+      "description": null,
+      "fields": [
+        {
+          "column": "title",
+          "description": null,
+          "id": 1,
+          "kind": "scalar",
+          "name": "title",
+          "required": true,
+          "required_since": 0,
+          "type": "text"
+        },
+        {
+          "column": "status",
+          "description": null,
+          "id": 2,
+          "kind": "enum",
+          "name": "status",
+          "required": true,
+          "required_since": 0,
+          "type": "req_status",
+          "values": [
+            "DRAFT",
+            "APPROVED",
+            "RETIRED",
+            "ARCHIVED"
+          ]
+        },
+        {
+          "column": "due",
+          "description": null,
+          "id": 3,
+          "kind": "scalar",
+          "name": "due",
+          "required": true,
+          "required_since": 3,
+          "type": "timestamp"
+        }
+      ],
+      "id": 2,
+      "name_en": "Functional Requirement",
+      "name_ru": "Функциональное требование",
+      "table": "fr_revision",
+      "taken": {
+        "codes": [],
+        "fields": [],
+        "names": []
+      }
+    },
+    {
+      "code": "TC",
+      "code_pattern": "TC-{NNN}",
+      "description": null,
+      "fields": [
+        {
+          "column": "title",
+          "description": null,
+          "id": 1,
+          "kind": "scalar",
+          "name": "title",
+          "required": true,
+          "required_since": 0,
+          "type": "text"
+        },
+        {
+          "column": "result",
+          "description": null,
+          "id": 2,
+          "kind": "enum",
+          "name": "result",
+          "required": false,
+          "required_since": null,
+          "type": "test_result",
+          "values": [
+            "PASS",
+            "FAIL"
+          ]
+        }
+      ],
+      "id": 3,
+      "name_en": "Test Case",
+      "name_ru": "Тест-кейс",
+      "table": "tc_revision",
+      "taken": {
+        "codes": [],
+        "fields": [],
+        "names": []
+      }
+    }
+  ],
+  "version": "1.3.0"
+}

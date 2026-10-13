@@ -1,6 +1,6 @@
 [project]
 name = "forge-model"
-version = "0.1.0"
+version = "0.2.0"
 description = "Компилятор модели, гейт совместимости и генератор миграций графа требований Forge"
 requires-python = ">=3.12"
 # Пины совпадают с plugin/forge/src/requirements.txt — файлом зависимостей поставки плагина.

@@ -1,4 +1,11 @@
-"""Командная строка: сборка модели, сравнение, выпуск, проверки."""
+"""Вход ядра: ключи и каталоги вызова, сценарии подкоманд, перевод исхода в текст и код возврата.
+
+Вход зависит только от контрактов сценариев, `EnvironmentFault` и фабрики сценариев; правил
+модели, выпуска и сверки в нём нет (design D3 change `layer-forge-core`). Обработчик подкоманды
+строит входной контракт из ключей, получает сценарий у фабрики по каталогам, печатает выходной
+контракт и возвращает код по исходу. Фабрика по умолчанию — точка сборки `assembly.py`; тест
+подставляет свою и проверяет, что вход исполняет любую реализацию контракта сценария.
+"""
 
 from __future__ import annotations
 
@@ -7,19 +14,66 @@ import os
 import sys
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Protocol
 
-from . import delivery, registry
-from .checks import checks_for, run_checks
-from .descriptor import compile_model, dump_descriptor
-from .errors import EnvironmentFault, ModelError
-from .gen.changelog import emit, emit_baseline
-from .intent.engine import DEFAULT_MAX_ITERATIONS, run_cycle
-from .intent.mock import steps_for
-from .intent.scenario import load_scenario
-from .model import load_model
-from .release import find_previous, plan_release, record_taken
-from .verify import verify_schema
+from .assembly import Assembly
+from .contract.application import contracts as model_outcomes
+from .contract.application.build_model import BuildModelInput, BuildModelUseCaseInterface
+from .contract.application.diff_model import DiffModelInput, DiffModelUseCaseInterface
+from .delivery.application import contracts as delivery_outcomes
+from .delivery.application.show_norms import ShowNormsInput, ShowNormsUseCaseInterface
+from .delivery.application.show_sample import ShowSampleInput, ShowSampleUseCaseInterface
+from .errors import EnvironmentFault
+from .intent.application import contracts as intent_outcomes
+from .intent.application.run_intent import (
+    DEFAULT_MAX_ITERATIONS,
+    RunIntentInput,
+    RunIntentUseCaseInterface,
+)
+from .release.application import contracts as release_outcomes
+from .release.application.release_baseline import (
+    ReleaseBaselineInput,
+    ReleaseBaselineUseCaseInterface,
+)
+from .release.application.release_model import ReleaseModelInput, ReleaseModelUseCaseInterface
+from .store.application import contracts as store_outcomes
+from .store.application.list_checks import ListChecksInput, ListChecksUseCaseInterface
+from .store.application.verify_store import VerifyStoreInput, VerifyStoreUseCaseInterface
+
+
+class Scenarios(Protocol):
+    """Фабрика сценариев подкоманд по каталогам вызова."""
+
+    def build_model(self, model: Path) -> BuildModelUseCaseInterface: ...
+
+    def diff_model(
+        self, model: Path, releases: Path, changelog: Path
+    ) -> DiffModelUseCaseInterface: ...
+
+    def release_model(
+        self, model: Path, releases: Path, changelog: Path
+    ) -> ReleaseModelUseCaseInterface: ...
+
+    def release_baseline(
+        self, model: Path, releases: Path, changelog: Path
+    ) -> ReleaseBaselineUseCaseInterface: ...
+
+    def list_checks(self, model: Path) -> ListChecksUseCaseInterface: ...
+
+    def verify_store(
+        self, model: Path, changelog: Path, dsn: str
+    ) -> VerifyStoreUseCaseInterface: ...
+
+    def run_intent(self, runs: Path) -> RunIntentUseCaseInterface: ...
+
+    def show_norms(self) -> ShowNormsUseCaseInterface: ...
+
+    def show_sample(self) -> ShowSampleUseCaseInterface: ...
+
+
+#: Обработчик подкоманды: ключи вызова и фабрика сценариев — код возврата.
+Handler = Callable[[argparse.Namespace, Scenarios], int]
+
 
 # Умолчания каталогов — пути относительно корня проекта, а не рабочего каталога: вход
 # вызывается из любого подкаталога проекта-потребителя и читает одну и ту же модель.
@@ -46,21 +100,18 @@ EXIT_REJECTED = 1
 EXIT_ENVIRONMENT = 2
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, *, scenarios: Scenarios | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
     # Обработчик подставлен разбором аргументов и из Namespace приходит нетипизированным:
     # тип объявляется здесь, у единственной точки вызова.
-    handler: Callable[[argparse.Namespace], int] = args.handler
+    handler: Handler = args.handler
     try:
         _resolve_directories(args)
-        return handler(args)
+        return handler(args, scenarios if scenarios is not None else Assembly())
     except EnvironmentFault as error:
         print(f"ОШИБКА  {error}", file=sys.stderr)
         return EXIT_ENVIRONMENT
-    except ModelError as error:
-        print(f"ОШИБКА  {error}", file=sys.stderr)
-        return EXIT_REJECTED
 
 
 def _project_root() -> Path:
@@ -157,81 +208,110 @@ def _intent_parser(sub: argparse._SubParsersAction[argparse.ArgumentParser]) -> 
     run.set_defaults(handler=_intent_run)
 
 
-def _descriptor(args: argparse.Namespace) -> dict[str, Any]:
-    return compile_model(load_model(args.model))
+def _build(args: argparse.Namespace, scenarios: Scenarios) -> int:
+    return _reported(scenarios.build_model(args.model).execute(BuildModelInput()))
 
 
-def _build(args: argparse.Namespace) -> int:
-    descriptor = _descriptor(args)
-    print(f"{descriptor['model']} {descriptor['version']}  {descriptor['hash']}")
-    return EXIT_OK
+def _diff(args: argparse.Namespace, scenarios: Scenarios) -> int:
+    scenario = scenarios.diff_model(args.model, args.releases, args.changelog)
+    return _reported(scenario.execute(DiffModelInput()))
 
 
-def _diff(args: argparse.Namespace) -> int:
-    descriptor = _descriptor(args)
-    previous = find_previous(args.releases, descriptor["major"])
-    print(plan_release(descriptor, previous).report())
-    return EXIT_OK
+class _Place(Protocol):
+    """Расхождение выходного контракта: место и сообщение."""
+
+    @property
+    def place(self) -> str: ...
+
+    @property
+    def message(self) -> str: ...
 
 
-def _gen(args: argparse.Namespace) -> int:
-    descriptor = _descriptor(args)
-    previous = find_previous(args.releases, descriptor["major"])
+class _Report(Protocol):
+    """Выходной контракт сценария с исходом, сводкой и расхождениями."""
 
+    @property
+    def outcome(self) -> str: ...
+
+    @property
+    def summary(self) -> tuple[str, ...]: ...
+
+    @property
+    def discrepancies(self) -> tuple[_Place, ...]: ...
+
+
+class _Release(_Report, Protocol):
+    """Выходной контракт выпуска: ещё и адреса выпущенных миграций."""
+
+    @property
+    def released(self) -> tuple[str, ...]: ...
+
+
+#: Код возврата по исходу сценария.
+EXIT_BY_OUTCOME = {
+    model_outcomes.BUILT: EXIT_OK,
+    model_outcomes.COMPARED: EXIT_OK,
+    model_outcomes.NOTHING_TO_RELEASE: EXIT_OK,
+    model_outcomes.REJECTED: EXIT_REJECTED,
+    release_outcomes.RELEASED: EXIT_OK,
+    release_outcomes.NOTHING_TO_RELEASE: EXIT_OK,
+    release_outcomes.REJECTED: EXIT_REJECTED,
+    store_outcomes.LISTED: EXIT_OK,
+    store_outcomes.VERIFIED: EXIT_OK,
+    store_outcomes.DRIFTED: EXIT_REJECTED,
+    store_outcomes.REJECTED: EXIT_REJECTED,
+    intent_outcomes.CLOSED: EXIT_OK,
+    intent_outcomes.NOT_CLOSED: EXIT_REJECTED,
+    intent_outcomes.REJECTED: EXIT_REJECTED,
+    intent_outcomes.PROCESS_ERROR: EXIT_ENVIRONMENT,
+    delivery_outcomes.SHOWN: EXIT_OK,
+}
+
+#: Пометка расхождения в диагностике: отказ ввода — ошибка, расхождение с хранилищем — факт.
+LABEL_BY_OUTCOME = {store_outcomes.DRIFTED: "РАСХОЖДЕНИЕ"}
+
+
+def _reported(output: _Report, after: tuple[str, ...] = ()) -> int:
+    """Напечатать выходной контракт: сводку — в вывод, расхождения — в диагностику."""
+    for line in (*output.summary, *after):
+        print(line)
+    label = LABEL_BY_OUTCOME.get(output.outcome, "ОШИБКА")
+    for discrepancy in output.discrepancies:
+        print(f"{label}  {discrepancy.place}: {discrepancy.message}", file=sys.stderr)
+    return EXIT_BY_OUTCOME[output.outcome]
+
+
+def _gen(args: argparse.Namespace, scenarios: Scenarios) -> int:
+    output: _Release
     if args.baseline:
-        emitted = emit_baseline(descriptor, args.changelog)
+        baseline = scenarios.release_baseline(args.model, args.releases, args.changelog)
+        output = baseline.execute(ReleaseBaselineInput())
     else:
-        plan = plan_release(descriptor, previous)
-        print(plan.report())
-        if plan.is_noop:
-            return EXIT_OK
-        emitted = emit(plan, args.changelog)
-        for line in record_taken(args.model, plan.changes):
-            print(f"занято навсегда: {line}")
-        # Перечень занятых номеров пополнен — дескриптор пересобирается, чтобы выпущенный
-        # файл содержал закрытые номера. На хеш это не влияет: taken в него не входит.
-        descriptor = _descriptor(args)
-
-    args.releases.mkdir(parents=True, exist_ok=True)
-    (args.releases / f"{descriptor['version']}.json").write_text(
-        dump_descriptor(descriptor), encoding="utf-8"
-    )
-    registry.record(args.changelog, descriptor, emitted.files)
-    for path in emitted.files:
-        print(f"выпущено: {path}")
-    return EXIT_OK
+        release = scenarios.release_model(args.model, args.releases, args.changelog)
+        output = release.execute(ReleaseModelInput())
+    released = tuple(f"выпущено: {args.changelog / address}" for address in output.released)
+    return _reported(output, released)
 
 
-def _checks(args: argparse.Namespace) -> int:
-    for check in checks_for(_descriptor(args)):
-        print(f"-- {check.name}: {check.subject}\n{check.sql}\n")
-    return EXIT_OK
+def _checks(args: argparse.Namespace, scenarios: Scenarios) -> int:
+    return _reported(scenarios.list_checks(args.model).execute(ListChecksInput()))
 
 
-def _intent_run(args: argparse.Namespace) -> int:
-    scenario = load_scenario(args.scenario)
+def _verify(args: argparse.Namespace, scenarios: Scenarios) -> int:
+    scenario = scenarios.verify_store(args.model, args.changelog, args.dsn)
+    return _reported(scenario.execute(VerifyStoreInput()))
+
+
+def _intent_run(args: argparse.Namespace, scenarios: Scenarios) -> int:
     created = not args.runs.exists()
     try:
-        outcome = run_cycle(
-            scenario,
-            steps_for(scenario),
-            runs_dir=args.runs,
-            max_iterations=args.max_iterations,
+        output = scenarios.run_intent(args.runs).execute(
+            RunIntentInput(scenario=args.scenario, max_iterations=args.max_iterations)
         )
-    except EnvironmentFault:
-        raise
-    except ModelError as error:
-        # Отказ модели движок не порождает: всё, что он поднимает, — сбой процесса цикла.
-        raise EnvironmentFault(str(error)) from error
     finally:
         if created and args.runs.exists():
             _recommend_ignore(args.runs)
-
-    print(f"{outcome.code}  {outcome.state.title}: {outcome.reason}")
-    print(f"итераций засчитано: {outcome.iterations}")
-    for path in outcome.reports:
-        print(f"отчёт: {path}")
-    return EXIT_OK if outcome.closed else EXIT_REJECTED
+    return _reported(output)
 
 
 def _recommend_ignore(runs: Path) -> None:
@@ -252,40 +332,13 @@ def _recommend_ignore(runs: Path) -> None:
     )
 
 
-def _norms(args: argparse.Namespace) -> int:
-    print(delivery.rule(args.rule) if args.rule else delivery.norms(), end="")
-    return EXIT_OK
+def _norms(args: argparse.Namespace, scenarios: Scenarios) -> int:
+    output = scenarios.show_norms().execute(ShowNormsInput(rule=args.rule))
+    print(output.text, end="")
+    return EXIT_BY_OUTCOME[output.outcome]
 
 
-def _sample(args: argparse.Namespace) -> int:
-    print(delivery.sample(), end="")
-    return EXIT_OK
-
-
-def _verify(args: argparse.Namespace) -> int:
-    import psycopg
-
-    descriptor = _descriptor(args)
-    problems = [f"changelog: {item}" for item in registry.verify_immutability(args.changelog)]
-
-    try:
-        connection = psycopg.connect(args.dsn, autocommit=True)
-    except psycopg.OperationalError as error:
-        raise EnvironmentFault(f"хранилище недоступно: {error}".strip(), where="verify") from error
-
-    with connection:
-
-        def fetch(sql: str) -> list[tuple[Any, ...]]:
-            return connection.execute(sql).fetchall()
-
-        problems += [f"схема: {drift}" for drift in verify_schema(descriptor, fetch)]
-        problems += [
-            f"целостность: {violation}" for violation in run_checks(checks_for(descriptor), fetch)
-        ]
-
-    if not problems:
-        print(f"схема соответствует модели {descriptor['version']}")
-        return EXIT_OK
-    for problem in problems:
-        print(f"РАСХОЖДЕНИЕ  {problem}", file=sys.stderr)
-    return EXIT_REJECTED
+def _sample(args: argparse.Namespace, scenarios: Scenarios) -> int:
+    output = scenarios.show_sample().execute(ShowSampleInput())
+    print(output.text, end="")
+    return EXIT_BY_OUTCOME[output.outcome]

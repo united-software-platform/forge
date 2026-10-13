@@ -1,0 +1,7 @@
+1.0.0 -> 1.1.0
+  PROD.4: поле active стало обязательным начиная с 1 [безопасно]
+  ORD.6: добавлено поле discount [безопасно]
+  belongs_to: from: добавлены типы SHIP [безопасно]
+  shipped_by.to_cardinality: to_cardinality: кардинальность ужесточена (0..* -> 0..1) [ломает контракт]
+  supersedes: добавлена связь [безопасно]
+ВНИМАНИЕ  shipped_by.to_cardinality: to_cardinality: кардинальность ужесточена (0..* -> 0..1)

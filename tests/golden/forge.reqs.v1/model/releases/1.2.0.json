@@ -1,0 +1,175 @@
+{
+  "enums": [
+    {
+      "id": 1,
+      "name": "req_status",
+      "taken": {
+        "codes": [],
+        "fields": [],
+        "names": []
+      },
+      "values": [
+        {
+          "id": 1,
+          "name": "DRAFT"
+        },
+        {
+          "id": 2,
+          "name": "APPROVED"
+        },
+        {
+          "id": 3,
+          "name": "RETIRED"
+        }
+      ]
+    }
+  ],
+  "hash": "sha256:75628d78d447f9b0731f4b1879bbf6e3f88961050eb9eaaece117f72b59031da",
+  "major": 1,
+  "minor": 2,
+  "model": "forge.reqs",
+  "patch": 0,
+  "relations": [
+    {
+      "acyclic": true,
+      "description": "Функциональное требование реализует бизнес-требование",
+      "from": [
+        "FR"
+      ],
+      "from_cardinality": {
+        "max": null,
+        "min": 1
+      },
+      "id": 1,
+      "name": "realizes",
+      "to": [
+        "BR"
+      ],
+      "to_cardinality": {
+        "max": null,
+        "min": 0
+      }
+    }
+  ],
+  "types": [
+    {
+      "code": "BR",
+      "code_pattern": "BR-{NNN}",
+      "description": "Потребность бизнеса, из которой выводятся функциональные требования",
+      "fields": [
+        {
+          "column": "title",
+          "description": "Краткая формулировка",
+          "id": 1,
+          "kind": "scalar",
+          "name": "title",
+          "required": true,
+          "required_since": 0,
+          "type": "text"
+        },
+        {
+          "column": "value",
+          "description": null,
+          "id": 2,
+          "kind": "scalar",
+          "name": "value",
+          "required": true,
+          "required_since": 0,
+          "type": "text"
+        },
+        {
+          "column": "status",
+          "description": null,
+          "id": 3,
+          "kind": "enum",
+          "name": "status",
+          "required": true,
+          "required_since": 0,
+          "type": "req_status",
+          "values": [
+            "DRAFT",
+            "APPROVED",
+            "RETIRED"
+          ]
+        },
+        {
+          "column": "origin",
+          "description": null,
+          "id": 4,
+          "kind": "scalar",
+          "name": "origin",
+          "required": false,
+          "required_since": null,
+          "type": "text"
+        },
+        {
+          "column": "rationale",
+          "description": null,
+          "id": 5,
+          "kind": "scalar",
+          "name": "rationale",
+          "required": true,
+          "required_since": 2,
+          "type": "text"
+        }
+      ],
+      "id": 1,
+      "name_en": "Business Requirement",
+      "name_ru": "Бизнес-требование",
+      "table": "br_revision",
+      "taken": {
+        "codes": [
+          19
+        ],
+        "fields": [
+          7
+        ],
+        "names": [
+          "priority"
+        ]
+      }
+    },
+    {
+      "code": "FR",
+      "code_pattern": "FR-{NNN}",
+      "description": null,
+      "fields": [
+        {
+          "column": "title",
+          "description": null,
+          "id": 1,
+          "kind": "scalar",
+          "name": "title",
+          "required": true,
+          "required_since": 0,
+          "type": "text"
+        },
+        {
+          "column": "status",
+          "description": null,
+          "id": 2,
+          "kind": "enum",
+          "name": "status",
+          "required": true,
+          "required_since": 0,
+          "type": "req_status",
+          "values": [
+            "DRAFT",
+            "APPROVED",
+            "RETIRED"
+          ]
+        }
+      ],
+      "id": 2,
+      "name_en": "Functional Requirement",
+      "name_ru": "Функциональное требование",
+      "table": "fr_revision",
+      "taken": {
+        "codes": [],
+        "fields": [],
+        "names": []
+      }
+    }
+  ],
+  "version": "1.2.0"
+}

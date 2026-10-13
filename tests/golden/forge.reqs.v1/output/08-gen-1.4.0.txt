@@ -1,0 +1,24 @@
+1.3.0 -> 1.4.0
+  req_status.3: значение RETIRED -> WITHDRAWN [безопасно]
+  req_status.ARCHIVED: удалено значение ARCHIVED [ломает контракт]
+  test_result: удалено перечисление [ломает контракт]
+  BR.4: поле provenance стало обязательным начиная с 4 [безопасно]
+  BR.6: удалено поле owner, данные колонки owner будут удалены [удаляет данные]
+  TC: удалён тип узла, таблица tc_revision будет удалена вместе с данными [удаляет данные]
+  realizes: to: удалены типы TC [ломает контракт]
+  realizes.to_cardinality: to_cardinality: кардинальность ослаблена (0..5 -> 0..*) [безопасно]
+  verified_by: удалена связь, её рёбра будут удалены [удаляет данные]
+ВНИМАНИЕ  req_status.ARCHIVED: удалено значение ARCHIVED
+ВНИМАНИЕ  test_result: удалено перечисление
+ВНИМАНИЕ  BR.6: удалено поле owner, данные колонки owner будут удалены
+ВНИМАНИЕ  TC: удалён тип узла, таблица tc_revision будет удалена вместе с данными
+ВНИМАНИЕ  realizes: to: удалены типы TC
+ВНИМАНИЕ  verified_by: удалена связь, её рёбра будут удалены
+занято навсегда: BR.6 (owner)
+выпущено: changelog/br/Version20260917183000.sql
+выпущено: changelog/br/Version20260917183001.sql
+выпущено: changelog/tc/Version20260917183002.sql
+выпущено: changelog/rel/Version20260917183003.sql
+выпущено: changelog/rel/Version20260917183004.sql
+выпущено: changelog/rel/Version20260917183005.sql
+выпущено: changelog/core/Version20260917183006.sql

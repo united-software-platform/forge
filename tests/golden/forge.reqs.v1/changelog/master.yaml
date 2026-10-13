@@ -1,0 +1,65 @@
+# Порядок применения миграций. Файл генерируется, править вручную не нужно.
+databaseChangeLog:
+- include:
+    file: core/Version20260915142233.sql
+    relativeToChangelogFile: true
+- include:
+    file: core/Version20260915142234.sql
+    relativeToChangelogFile: true
+- include:
+    file: core/Version20260916090000.sql
+    relativeToChangelogFile: true
+- include:
+    file: core/Version20260916090001.sql
+    relativeToChangelogFile: true
+- include:
+    file: br/Version20260916090002.sql
+    relativeToChangelogFile: true
+- include:
+    file: br/Version20260916090003.sql
+    relativeToChangelogFile: true
+- include:
+    file: br/Version20260916090004.sql
+    relativeToChangelogFile: true
+- include:
+    file: fr/Version20260916090005.sql
+    relativeToChangelogFile: true
+- include:
+    file: fr/Version20260916090006.sql
+    relativeToChangelogFile: true
+- include:
+    file: tc/Version20260916090007.sql
+    relativeToChangelogFile: true
+- include:
+    file: rel/Version20260916090008.sql
+    relativeToChangelogFile: true
+- include:
+    file: rel/Version20260916090009.sql
+    relativeToChangelogFile: true
+- include:
+    file: rel/Version20260916090010.sql
+    relativeToChangelogFile: true
+- include:
+    file: core/Version20260916090011.sql
+    relativeToChangelogFile: true
+- include:
+    file: br/Version20260917183000.sql
+    relativeToChangelogFile: true
+- include:
+    file: br/Version20260917183001.sql
+    relativeToChangelogFile: true
+- include:
+    file: tc/Version20260917183002.sql
+    relativeToChangelogFile: true
+- include:
+    file: rel/Version20260917183003.sql
+    relativeToChangelogFile: true
+- include:
+    file: rel/Version20260917183004.sql
+    relativeToChangelogFile: true
+- include:
+    file: rel/Version20260917183005.sql
+    relativeToChangelogFile: true
+- include:
+    file: core/Version20260917183006.sql
+    relativeToChangelogFile: true

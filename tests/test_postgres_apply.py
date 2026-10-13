@@ -5,11 +5,9 @@ from pathlib import Path
 
 import pytest
 import yaml
-from forge_model.descriptor import compile_model
-from forge_model.gen import postgres
-from forge_model.gen.changelog import emit, emit_baseline
-from forge_model.model import load_model
-from forge_model.release import plan_release
+from forge_model.release.infrastructure.postgres import PostgresDialect
+
+from tests.conftest import baseline, compiled, release
 
 pgserver = pytest.importorskip("pgserver")
 
@@ -53,8 +51,8 @@ def _sql_of(path: Path) -> list[str]:
 
 
 def test_свёртка_модели_применяется_к_пустой_базе(db, model_root, tmp_path):
-    descriptor = compile_model(load_model(model_root))
-    _apply(db, postgres.baseline_statements(descriptor))
+    descriptor = compiled(model_root)
+    _apply(db, PostgresDialect().baseline_statements(descriptor))
 
     tables = db.psql(
         "SELECT table_name FROM information_schema.tables "
@@ -75,22 +73,22 @@ def test_свёртка_модели_применяется_к_пустой_ба
 
 
 def test_замыкающая_миграция_пишет_отпечаток(db, model_root, tmp_path):
-    descriptor = compile_model(load_model(model_root))
+    descriptor = compiled(model_root)
     out = tmp_path / "changelog"
-    emitted = emit_baseline(descriptor, out)
+    emitted = [out / a for a in baseline(model_root, out).released]
 
-    for path in emitted.files:
+    for path in emitted:
         _apply(db, _sql_of(path))
 
     state = db.psql("SELECT version || ' ' || hash FROM model_state;")
-    assert descriptor["version"] in state
-    assert descriptor["hash"] in state
+    assert str(descriptor.version) in state
+    assert descriptor.hash in state
 
 
 def test_добавление_поля_применяется_поверх_свёртки(db, model_root, model_copy, tmp_path):
-    before = compile_model(load_model(model_root))
+    before = compiled(model_root)
     out = tmp_path / "changelog"
-    for path in emit_baseline(before, out).files:
+    for path in [out / a for a in baseline(model_root, out).released]:
         _apply(db, _sql_of(path))
 
     path = model_copy / "types" / "br.yaml"
@@ -102,8 +100,8 @@ def test_добавление_поля_применяется_поверх_св�
     data["version"] = "1.3.0"
     manifest.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
 
-    after = compile_model(load_model(model_copy))
-    for file in emit(plan_release(after, before), out).files:
+    after = compiled(model_copy)
+    for file in [out / a for a in release(model_copy, out, before).released]:
         _apply(db, _sql_of(file))
 
     columns = db.psql(
@@ -111,14 +109,14 @@ def test_добавление_поля_применяется_поверх_св�
         "WHERE table_name = 'br_revision' ORDER BY column_name;"
     )
     assert "owner" in columns
-    assert after["hash"] in db.psql("SELECT hash FROM model_state;")
+    assert after.hash in db.psql("SELECT hash FROM model_state;")
 
 
 def test_обе_дороги_дают_одну_схему(db, server, model_root, model_copy, tmp_path):
     """Схема, собранная по шагам, совпадает со схемой, собранной свёрткой модели."""
-    before = compile_model(load_model(model_root))
+    before = compiled(model_root)
     out = tmp_path / "changelog"
-    for path in emit_baseline(before, out).files:
+    for path in [out / a for a in baseline(model_root, out).released]:
         _apply(db, _sql_of(path))
 
     path = model_copy / "types" / "br.yaml"
@@ -129,9 +127,9 @@ def test_обе_дороги_дают_одну_схему(db, server, model_root
     data = yaml.safe_load(manifest.read_text(encoding="utf-8"))
     data["version"] = "1.3.0"
     manifest.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
-    after = compile_model(load_model(model_copy))
+    after = compiled(model_copy)
 
-    for file in emit(plan_release(after, before), out).files:
+    for file in [out / a for a in release(model_copy, out, before).released]:
         _apply(db, _sql_of(file))
     step_by_step = db.psql(
         "SELECT column_name FROM information_schema.columns "
@@ -139,7 +137,7 @@ def test_обе_дороги_дают_одну_схему(db, server, model_root
     )
 
     server.psql("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
-    _apply(server, postgres.baseline_statements(after))
+    _apply(server, PostgresDialect().baseline_statements(after))
     from_model = server.psql(
         "SELECT column_name FROM information_schema.columns "
         "WHERE table_name = 'br_revision' ORDER BY column_name;"

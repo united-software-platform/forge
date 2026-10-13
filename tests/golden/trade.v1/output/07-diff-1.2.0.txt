@@ -1,0 +1,7 @@
+1.1.0 -> 1.2.0
+  payment_method.CRYPTO: добавлено значение CRYPTO [безопасно]
+  CUST.4: добавлено поле phone [безопасно]
+  ORD.5: comment -> note [безопасно]
+  SHIP.2: удалено поле tracking, данные колонки tracking будут удалены [удаляет данные]
+  3: связь refers_to -> points_to [безопасно]
+ВНИМАНИЕ  SHIP.2: удалено поле tracking, данные колонки tracking будут удалены

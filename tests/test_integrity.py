@@ -5,11 +5,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from forge_model.checks import checks_for, run_checks
-from forge_model.descriptor import compile_model
-from forge_model.gen import postgres
-from forge_model.model import load_model
-from forge_model.verify import verify_schema
+from forge_model.release.infrastructure.postgres import PostgresDialect
+
+from tests.conftest import compiled, store_drifts, store_violations
 
 pgserver = pytest.importorskip("pgserver")
 psycopg = pytest.importorskip("psycopg")
@@ -27,13 +25,13 @@ def server():
 def db(server, model_root):
     """Пустая база со схемой текущей модели и подключением psycopg."""
     server.psql("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
-    descriptor = compile_model(load_model(model_root))
-    for statement in postgres.baseline_statements(descriptor):
+    descriptor = compiled(model_root)
+    for statement in PostgresDialect().baseline_statements(descriptor):
         server.psql(statement)
     connection = psycopg.connect(server.get_uri(), autocommit=True)
     connection.execute(
         "INSERT INTO model_state (version, hash) VALUES (%s, %s)",
-        (descriptor["version"], descriptor["hash"]),
+        (str(descriptor.version), descriptor.hash),
     )
     yield connection, descriptor
     connection.close()
@@ -63,14 +61,14 @@ def _node(connection, kind: str, num: int) -> int:
 
 def test_запросы_проверок_выполняются_на_пустой_базе(db):
     connection, descriptor = db
-    assert run_checks(checks_for(descriptor), _fetch(connection)) == []
+    assert store_violations(descriptor, _fetch(connection)) == []
 
 
 def test_узел_без_обязательной_связи_попадает_в_отчёт(db):
     connection, descriptor = db
     _node(connection, "FR", 1)
 
-    violations = run_checks(checks_for(descriptor), _fetch(connection))
+    violations = store_violations(descriptor, _fetch(connection))
     assert [v.check for v in violations] == ["realizes.from_cardinality.min"]
     assert "минимум 1" in violations[0].subject
 
@@ -85,7 +83,7 @@ def test_обязательная_связь_снимает_нарушение(d
         (fr, br),
     )
 
-    assert run_checks(checks_for(descriptor), _fetch(connection)) == []
+    assert store_violations(descriptor, _fetch(connection)) == []
 
 
 def test_связь_между_недопустимыми_типами_отвергается_схемой(db):
@@ -115,7 +113,7 @@ def test_устаревшая_ревизия_цели_делает_связь_п
         (br,),
     )
 
-    violations = run_checks(checks_for(descriptor), _fetch(connection))
+    violations = store_violations(descriptor, _fetch(connection))
     assert [v.check for v in violations] == ["links.suspect"]
 
 
@@ -124,14 +122,14 @@ def test_устаревшая_ревизия_цели_делает_связь_п
 
 def test_схема_соответствует_модели(db):
     connection, descriptor = db
-    assert verify_schema(descriptor, _fetch(connection)) == []
+    assert store_drifts(descriptor, _fetch(connection)) == []
 
 
 def test_правка_схемы_руками_обнаруживается(db):
     connection, descriptor = db
     connection.execute("ALTER TABLE br_revision ADD COLUMN sneaky text")
 
-    drifts = verify_schema(descriptor, _fetch(connection))
+    drifts = store_drifts(descriptor, _fetch(connection))
     assert [str(d) for d in drifts] == [
         "br_revision.sneaky: колонка есть в хранилище, но модель её не описывает"
     ]
@@ -141,7 +139,7 @@ def test_отставание_хранилища_обнаруживается(db
     connection, descriptor = db
     connection.execute("ALTER TABLE br_revision DROP COLUMN origin")
 
-    drifts = verify_schema(descriptor, _fetch(connection))
+    drifts = store_drifts(descriptor, _fetch(connection))
     assert any("origin" in str(d) and "отсутствует" in str(d) for d in drifts)
 
 
@@ -149,5 +147,5 @@ def test_непримененные_миграции_видны_по_отпеч�
     connection, descriptor = db
     connection.execute("UPDATE model_state SET hash = 'sha256:чужой', version = '1.1.0'")
 
-    drifts = verify_schema(descriptor, _fetch(connection))
+    drifts = store_drifts(descriptor, _fetch(connection))
     assert any("применены не все миграции" in str(d) for d in drifts)
